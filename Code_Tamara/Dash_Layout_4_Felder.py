@@ -16,14 +16,9 @@ df = pd.read_csv(data_path, sep=';')
 app.layout = html.Div([
     html.H1("Eye-Tracking Data Analysis"),
     dbc.Row([
-        dbc.Col([
-            html.Label("Select a color dimension:"),
-            dcc.Dropdown(id='color', options=[
-                {'label': 'Fixation Duration', 'value': 'FixationDuration'},
-                {'label': 'Fixation Index', 'value': 'FixationIndex'}
-            ], value='FixationDuration'),
-            dcc.Graph(id="graph1")
-        ], width=6),
+        dbc.Col(html.Img(src='01_Antwerpen_S1_Color.png',
+                         style={'width': '100%', 'height': 'auto'}),
+                width=6),
         dbc.Col(dcc.Graph(id="graph2"), width=6)
     ]),
     dbc.Row([
@@ -32,35 +27,52 @@ app.layout = html.Div([
     ])
 ])
 
-# Callback for Graph 1 - Image:
 @app.callback(
-    Output("graph1", "figure"),
-    Input("color", "value")
+    Output('graph1', 'figure'),
+    Input('graph1', 'id')
 )
-def update_graph1(color):
+
+def update_graph1(_):
     #Bild einlesen:
     img_path = '01_Antwerpen_S1_Color.jpg'
     img = Image.open(img_path)
-
+    fig = go.Figure()
+    fig.add_layout_image(
+        dict(
+            source=img,
+            xref="x",
+            yref="y",
+            x=0,
+            y=0,
+            sizex=df['MappedFixationPointX'].max(),
+            sizey=df['MappedFixationPointY'].max(),
+            sizing="stretch",
+            opacity=1.0,
+            layer="below"
+        )
+    )
+    fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False)
     return fig
 
 
+    #img_path = '01_Antwerpen_S1_Color.jpg'
+    #fig = Image.open(img_path)
+    #return fig
 
-# Callback for Graph 2:
 @app.callback(
-    Output("graph2", "figure"),
-    Input("color", "value")
+    Output('graph2', 'figure'),
+    Input('graph2', 'id')
 )
-def update_graph2(color):
+
+def update_graph2(_):
     fig = px.scatter(df, x='MappedFixationPointX', y='MappedFixationPointY',
-                     size='FixationDuration', color=color,
+                     size='FixationDuration',
                      title='Gaze Plot')
     fig.update_layout(
         plot_bgcolor='white',
         paper_bgcolor='white'
     )
-
     return fig
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=False)
