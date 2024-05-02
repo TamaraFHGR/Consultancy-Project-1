@@ -1,24 +1,59 @@
-
 /* custom.css */
+
+/* Globale Anpassungen für die gesamte Seite */
 body {
-    background-color: #f8f9fa;  /* Einen hellen Hintergrund setzen */
+    font-family: Arial, sans-serif;
+    background-color: #A7B9B9;
+    margin: 0;  /* Entfernt den Standardabstand von 8px um den Körper */
+    padding: 0;  /* Entfernt den Standardabstand von 8px um den Körper */
 }
 
+/* Anpassungen für den Header h1 */
 h1 {
-    color: darkblue;
-    font-size: 24px !important;  /* Erzwingt die Schriftgröße für h1, überschreibt Bootstrap-Styles */
+    color: #2F4C4C;
+    font-size: 28px;
+    font-weight: bold;
     text-align: center;
 }
 
-p {
-    color: #555;
-    font-size: 14px !important;  /* Setzt die Schriftgröße für p und überschreibt andere Styles */
+/* Anpassungen für den Header h2 */
+h2 {
+    color: #2F4C4C;
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
 }
 
-/* h1 {
-    color: darkblue;
-    font-size: 24px !important;  // Erzwingt die Schriftgröße für h1, überschreibt Bootstrap-Styles
+/* Anpassungen für Text-Teil p */
+p {
+    color: white;
+    font-size: 20px;
+    font-weight: normal;
+    text-align: left;
 }
+
+/* Anpassungen für Drop-Down Menu */
+#dropdown-area {
+    background-color: #2F4C4C;
+    color: #2F4C4C;
+    padding: 20px;
+    border-radius: 5px;
+    margin: 10px;
+}
+
+.dropdown button {
+    background-color: #007bff;
+    color: white;
+    padding: 8px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+
+
+
+/*
 
  Spezifische Anpassungen für die Tabelle
 

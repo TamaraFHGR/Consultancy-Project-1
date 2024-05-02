@@ -39,15 +39,14 @@ app.layout = html.Div([
     html.Div(
         id='header-area',
         children=[
-            html.H1('Analysis of Eye-Tracking Data'),
-            html.P("This Dashboard enables the visual analysis of eye-tracking data based on metro maps of different cities.")
+            html.H1('Dashboard for the visual analysis of Eye-Tracking data,'),
+            html.H1("based on Metro Maps of different Cities.")
 
         ]
     ),
     html.Div(
         id='dropdown-area',
         children=[
-            #html.H2("Please select a City-Map"),
             html.P("Please select a City-Map:"),
             dcc.Dropdown(
                 id='dropdown_city',
@@ -60,8 +59,8 @@ app.layout = html.Div([
         dbc.Col(
             html.Img(
                 id='city_image',
-                style={'width': '100%', 'height': 'auto'}),
-            width=6),
+                style={'width': '100%', 'height': '60%'}),
+            width=5),
         dbc.Col(
             children=[
                 dcc.Dropdown(
@@ -84,14 +83,14 @@ app.layout = html.Div([
                         df[df['description'] == 'color']['FixationDuration'].max()
                     ],
                 )
-            ],width=6)
+            ],width=7)
     ]),
     # Zeile 2:
     dbc.Row([
         dbc.Col(
             html.Div(
                 id="table_container"
-            ), width=6),
+            ), width=5),
         dbc.Col(
             children=[
                 dcc.Dropdown(
@@ -114,7 +113,7 @@ app.layout = html.Div([
                         df[df['description'] == 'gray']['FixationDuration'].max()
                     ],
                 )
-            ],width=6)
+            ],width=7)
     ])
 ])
 """
