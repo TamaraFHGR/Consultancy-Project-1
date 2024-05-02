@@ -3,9 +3,10 @@ import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.express as px
 import glob
+import plotly.graph_objects as go
 
 # Initialization of the Dash app:
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP, '/assets/custom.css'])
 
 """
 -----------------------------------------------------------------------------------------
@@ -62,8 +63,28 @@ app.layout = html.Div([
                 style={'width': '100%', 'height': 'auto'}),
             width=6),
         dbc.Col(
-            dcc.Graph(id="scatter_plot_color"),
-            width=6)
+            children=[
+                dcc.Dropdown(
+                    id='dropdown_user_color',
+                    options=[
+                        {'label': user,
+                         'value': user}
+                        for user in sorted(df[df['description'] == 'color']['user'].unique())],
+                ),
+                dcc.Graph(
+                    id="scatter_plot_color"),
+                html.P("Select a range of Fixation Duration"),
+                dcc.RangeSlider(
+                    id='range_slider_color',
+                    min=df[df['description'] == 'color']['FixationDuration'].min(),
+                    max=df[df['description'] == 'color']['FixationDuration'].max(),
+                    step=None,
+                    value=[
+                        df[df['description'] == 'color']['FixationDuration'].min(),
+                        df[df['description'] == 'color']['FixationDuration'].max()
+                    ],
+                )
+            ],width=6)
     ]),
     # Zeile 2:
     dbc.Row([
@@ -72,8 +93,28 @@ app.layout = html.Div([
                 id="table_container"
             ), width=6),
         dbc.Col(
-            dcc.Graph(id="scatter_plot_grey"),
-            width=6)
+            children=[
+                dcc.Dropdown(
+                    id='dropdown_user_grey',
+                    options=[
+                        {'label': user,
+                         'value': user}
+                        for user in sorted(df[df['description'] == 'gray']['user'].unique())],
+                ),
+                dcc.Graph(
+                    id="scatter_plot_grey"),
+                html.P("Select a range of Fixation Duration"),
+                dcc.RangeSlider(
+                    id='range_slider_grey',
+                    min=df[df['description'] == 'gray']['FixationDuration'].min(),
+                    max=df[df['description'] == 'gray']['FixationDuration'].max(),
+                    step=None,
+                    value=[
+                        df[df['description'] == 'gray']['FixationDuration'].min(),
+                        df[df['description'] == 'gray']['FixationDuration'].max()
+                    ],
+                )
+            ],width=6)
     ])
 ])
 """
@@ -102,23 +143,71 @@ def get_image_path_color(selected_city):
 
 @app.callback(
     Output('scatter_plot_color', 'figure'),
-    [Input('dropdown_city', 'value')]
+    [Input('dropdown_city', 'value'),
+     Input('dropdown_user_color', 'value'),
+     Input('range_slider_color', 'value')]
 )
-def update_scatter_plot_color(selected_city):
+def update_scatter_plot_color(selected_city, selected_user, slider_value_color):
     if selected_city:
-        # Filter data based on the selected city
-        filtered_df = df[(df['City'] == selected_city) & (df['description'] == 'color')]
+        # Define a color map for users
+        unique_users = df['user'].dropna().unique()
+        colors = px.colors.qualitative.Plotly  # Use Plotly's qualitative color scale
+
+        # Create a dictionary to map each user to a specific color
+        color_map = {user: colors[i % len(colors)] for i, user in enumerate(unique_users)}
+
+        # Check if a user is selected or the "All" option is chosen
+        if selected_user == 'All' or not selected_user:
+            user_filter = df[
+                'user'].notnull()  # If 'All' users or no user selected, include all non-null user entries
+        else:
+            user_filter = (df['user'] == selected_user)  # Specific user is selected
+
+        # Filter and sort data based on the selected filters
+        filtered_df = df[
+            (df['City'] == selected_city) &
+            (df['description'] == 'color') &
+            user_filter &
+            (df['FixationDuration'] >= slider_value_color[0]) &
+            (df['FixationDuration'] <= slider_value_color[1])
+            ].sort_values(by='FixationIndex')
+
+        # Define the maximum extents for the plot
+        max_x = filtered_df['MappedFixationPointX'].max()
+        min_x = filtered_df['MappedFixationPointX'].min()
+        max_y = filtered_df['MappedFixationPointY'].max()
+        min_y = filtered_df['MappedFixationPointY'].min()
+
+        # Create scatter plot using the color map
         fig = px.scatter(filtered_df,
                          x='MappedFixationPointX',
                          y='MappedFixationPointY',
                          size='FixationDuration',
                          color='user',
+                         color_discrete_map=color_map,
                          title=('Colored Metro Map Observations in ' + selected_city),
                          labels={
                              'MappedFixationPointX': 'X Coordinate',
                              'MappedFixationPointY': 'Y Coordinate',
                              'FixationDuration': 'Duration (ms)'
                          })
+        fig.update_xaxes(range=[min_x, max_x])
+        fig.update_yaxes(range=[min_y, max_y])
+
+        # Add line traces for each user
+        for user in filtered_df['user'].unique():
+            user_df = filtered_df[filtered_df['user'] == user]
+            fig.add_trace(
+                go.Scatter(
+                    x=user_df['MappedFixationPointX'],
+                    y=user_df['MappedFixationPointY'],
+                    mode='lines',
+                    line=dict(width=2, color=color_map[user]),
+                    name=f"Path for {user}"
+                )
+            )
+
+        # Add Background Image
         image_path_color = get_image_path_color(selected_city)
         fig.add_layout_image(
             dict(
@@ -129,7 +218,8 @@ def update_scatter_plot_color(selected_city):
                 sizey=filtered_df['MappedFixationPointY'].max(),
                 xref="x",
                 yref="y",
-                sizing = "stretch",
+                # do not stretch the image: only show as much as fits the axes
+                sizing="contain",
                 opacity=0.6,
                 layer="below"
             )
@@ -141,6 +231,8 @@ def update_scatter_plot_color(selected_city):
         return fig
     else:
         return px.scatter(title='Please select a city to view data')
+
+
 """
 -----------------------------------------------------------------------------------------
 
@@ -168,7 +260,6 @@ def update_table_container(selected_city):
         #average_fixation_duration_grey = fixation_duration_grey / total_fixations_grey if total_fixations_grey else 0
 
         table = dash_table.DataTable(
-            id='table_container',
             columns=[
                 {"name": "KPI", "id": "KPI"},
                 {"name": "Color Map", "id": "Color"},
@@ -221,12 +312,26 @@ def get_image_path_grey(selected_city):
 
 @app.callback(
     Output('scatter_plot_grey', 'figure'),
-    [Input('dropdown_city', 'value')]
+    [Input('dropdown_city', 'value'),
+     Input('dropdown_user_grey', 'value'),
+     Input('range_slider_grey', 'value')]
 )
-def update_scatter_plot_grey(selected_city):
+def update_scatter_plot_grey(selected_city, selected_user, slider_value_grey):
     if selected_city:
-        # Filter data based on the selected city
-        filtered_df = df[(df['City'] == selected_city) & (df['description'] == 'gray')]
+        # Check if a user is selected or the "All" option is chosen
+        if selected_user == 'All' or not selected_user:
+            user_filter = (
+                df['user'].notnull())  # If 'All' users or no user selected, include all non-null user entries
+        else:
+            user_filter = (df['user'] == selected_user)  # Specific user is selected
+        # Filter data based on the selected filters
+        filtered_df = df[
+            (df['City'] == selected_city) &
+            (df['description'] == 'gray') &
+            user_filter &
+            (df['FixationDuration'] >= slider_value_grey[0]) &
+            (df['FixationDuration'] <= slider_value_grey[1])
+            ]
         fig = px.scatter(filtered_df,
                          x='MappedFixationPointX',
                          y='MappedFixationPointY',
@@ -253,6 +358,7 @@ def update_scatter_plot_grey(selected_city):
                 layer="below"
             )
         )
+        fig["layout"].pop("updatemenus")  # optional, drop animation buttons
         fig.update_layout(
             plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
             paper_bgcolor='rgba(0, 0, 0, 0)'  # Set paper color to transparent
