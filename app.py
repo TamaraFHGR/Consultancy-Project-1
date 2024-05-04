@@ -18,21 +18,6 @@ data_path = 'assets/all_fixation_data_cleaned_up.csv'
 df = pd.read_csv(data_path, sep=';')
 """
 -----------------------------------------------------------------------------------------
-
-KPI Calculation:
-total_fixation_duration = df['FixationDuration'].sum()
-fixation_duration_color = df[df['description'] == 'color']['FixationDuration'].sum()
-fixation_duration_grey = df[df['description'] == 'gray']['FixationDuration'].sum()
-
-total_fixations = len(df)
-total_fixations_color = len(df[df['description'] == 'color'])
-total_fixations_grey = len(df[df['description'] == 'gray'])
-
-average_fixation_duration = df['FixationDuration'].mean()
-average_fixation_duration_color = df[df['description'] == 'color']['FixationDuration'].mean()
-average_fixation_duration_grey = df[df['description'] == 'gray']['FixationDuration'].mean()
------------------------------------------------------------------------------------------
-
 Definition of Dash Layout
 """
 app.layout = html.Div([
@@ -50,7 +35,7 @@ app.layout = html.Div([
             html.P("Please select a City-Map:"),
             dcc.Dropdown(
                 id='dropdown_city',
-                options=[{'label': city, 'value': city} for city in sorted(df['City'].unique())]
+                options=[{'label': city, 'value': city} for city in sorted(df['CityMap'].unique())]
             ),
         ]
     ),
@@ -59,8 +44,8 @@ app.layout = html.Div([
         dbc.Col(
             html.Img(
                 id='city_image',
-                style={'width': '100%', 'height': '60%'}),
-            width=5),
+                style={'width': '90%', 'height': 'auto%'}),
+            width=6),
         dbc.Col(
             children=[
                 dcc.Dropdown(
@@ -83,14 +68,14 @@ app.layout = html.Div([
                         df[df['description'] == 'color']['FixationDuration'].max()
                     ],
                 )
-            ],width=7)
+            ],width=6)
     ]),
     # Zeile 2:
     dbc.Row([
         dbc.Col(
             html.Div(
                 id="table_container"
-            ), width=5),
+            ), width=6),
         dbc.Col(
             children=[
                 dcc.Dropdown(
@@ -113,7 +98,7 @@ app.layout = html.Div([
                         df[df['description'] == 'gray']['FixationDuration'].max()
                     ],
                 )
-            ],width=7)
+            ],width=6)
     ])
 ])
 """
@@ -164,7 +149,7 @@ def update_scatter_plot_color(selected_city, selected_user, slider_value_color):
 
         # Filter and sort data based on the selected filters
         filtered_df = df[
-            (df['City'] == selected_city) &
+            (df['CityMap'] == selected_city) &
             (df['description'] == 'color') &
             user_filter &
             (df['FixationDuration'] >= slider_value_color[0]) &
@@ -190,8 +175,8 @@ def update_scatter_plot_color(selected_city, selected_user, slider_value_color):
                              'MappedFixationPointY': 'Y Coordinate',
                              'FixationDuration': 'Duration (ms)'
                          })
-        fig.update_xaxes(range=[min_x, max_x])
-        fig.update_yaxes(range=[min_y, max_y])
+        fig.update_xaxes(range=[0, 1650])
+        fig.update_yaxes(range=[0, 1200])
 
         # Add line traces for each user
         for user in filtered_df['user'].unique():
@@ -211,21 +196,20 @@ def update_scatter_plot_color(selected_city, selected_user, slider_value_color):
         fig.add_layout_image(
             dict(
                 source=image_path_color,
-                x=0,
-                sizex=filtered_df['MappedFixationPointX'].max(),
-                y=filtered_df['MappedFixationPointY'].max(),
-                sizey=filtered_df['MappedFixationPointY'].max(),
+                x=0,    # x-Position des Bildes in Pixel
+                sizex=1650,  # Breite des Bildes in Pixel
+                y=1200,    # y-Position des Bildes in Pixel
+                sizey=1200,  # Höhe des Bildes in Pixel
                 xref="x",
                 yref="y",
-                # do not stretch the image: only show as much as fits the axes
-                sizing="contain",
+                sizing="contain",  # Das Bild wird so skaliert, dass es komplett sichtbar ist, ohne gestreckt zu werden
                 opacity=0.6,
                 layer="below"
             )
         )
         fig.update_layout(
             plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
-            paper_bgcolor='rgba(0, 0, 0, 0)'  # Set paper color to transparent
+            paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
         )
         return fig
     else:
