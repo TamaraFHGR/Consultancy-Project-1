@@ -46,8 +46,16 @@ app.layout = html.Div([
                 dcc.Dropdown(
                     id='dropdown_city',
                     options=[{'label': city, 'value': city} for city in sorted(df['CityMap'].unique())]
-                )]
-            ),
+                                ),
+                html.P('Choose a Type of Visualization:'),
+                dcc.RadioItems(
+                    id='radio_visualization',
+                    options=[
+                        {'label': 'Gaze-Plot', 'value': 'Gaze-Plot'},
+                        {'label': 'Heat-Map', 'value': 'Heat-Map'}]
+                )
+            ]
+        ),
         html.Div(
             id='kpi-area',
             children=[
@@ -68,15 +76,34 @@ app.layout = html.Div([
                     id='city_image_color',
                     style={'width': '90%', 'height': 'auto%'}),
                 dcc.Graph(
-                    id='plot_color'),
+                    id='plot_color_1'),
                 html.P('Select a User'),
                 dcc.Dropdown(
-                    id='dropdown_user_color',
-                    options=[{'label': user, 'value': user} for user in sorted(df[df['description'] == 'color']['user'].unique())],
+                    id='dropdown_user_color_1',
+                    options=[{'label': user, 'value': user} for user in
+                             sorted(df[df['description'] == 'color']['user'].unique())],
                 ),
                 html.P('Select a range of Task Duration'),
                 dcc.RangeSlider(
-                    id='range_slider_color',
+                    id='range_slider_color_1',
+                    min=1,
+                    max=50,
+                    step=None,
+                    value=[
+                        df[df['description'] == 'color']['FixationDuration_aggregated'].min(),
+                        df[df['description'] == 'color']['FixationDuration_aggregated'].max()],
+                ),
+                dcc.Graph(
+                    id='plot_color_2'),
+                html.P('Select a User'),
+                dcc.Dropdown(
+                    id='dropdown_user_color_2',
+                    options=[{'label': user, 'value': user} for user in
+                             sorted(df[df['description'] == 'color']['user'].unique())],
+                ),
+                html.P('Select a range of Task Duration'),
+                dcc.RangeSlider(
+                    id='range_slider_color_2',
                     min=1,
                     max=50,
                     step=None,
@@ -93,7 +120,7 @@ app.layout = html.Div([
                     id='city_image_grey',
                     style={'width': '90%', 'height': 'auto%'}),
                 dcc.Graph(
-                    id='plot_grey'),
+                    id='plot_grey_1'),
                 html.P('Select a User'),
                 dcc.Dropdown(
                     id='dropdown_user_grey',
@@ -116,7 +143,67 @@ app.layout = html.Div([
 
 """
 -----------------------------------------------------------------------------------------
-Section 3: Define KPI-Area:
+Section 3: Define Plot-Selection Area:
+"""
+
+@app.callback(
+    Output('color_plot_area', 'children'),
+    [Input('radio_visualization', 'value')]
+)
+
+def update_plot_area(visualization_type):
+    if visualization_type == 'Gaze-Plot':
+        return [
+            html.Img(
+                id='city_image_color',
+                style={'width': '90%', 'height': 'auto%'}),
+            dcc.Graph(
+                id='plot_color_1'),
+            html.P('Select a User'),
+            dcc.Dropdown(
+                id='dropdown_user_color_1',
+                options=[{'label': user, 'value': user} for user in
+                         sorted(df[df['description'] == 'color']['user'].unique())],
+            ),
+            html.P('Select a range of Task Duration'),
+            dcc.RangeSlider(
+                id='range_slider_color_1',
+                min=1,
+                max=50,
+                step=None,
+                value=[
+                    df[df['description'] == 'color']['FixationDuration_aggregated'].min(),
+                    df[df['description'] == 'color']['FixationDuration_aggregated'].max()],
+            )
+        ]
+    else:
+        return [
+            html.Img(
+                id='city_image_color',
+                style={'width': '90%', 'height': 'auto%'}),
+            dcc.Graph(
+                id='plot_color_2'),
+            html.P('Select a User'),
+            dcc.Dropdown(
+                id='dropdown_user_color_2',
+                options=[{'label': user, 'value': user} for user in
+                         sorted(df[df['description'] == 'color']['user'].unique())],
+            ),
+            html.P('Select a range of Task Duration'),
+            dcc.RangeSlider(
+                id='range_slider_color_2',
+                min=1,
+                max=50,
+                step=None,
+                value=[
+                    df[df['description'] == 'color']['FixationDuration_aggregated'].min(),
+                    df[df['description'] == 'color']['FixationDuration_aggregated'].max()],
+            )
+        ]
+
+"""
+-----------------------------------------------------------------------------------------
+Section 4: Define KPI-Area:
 """
 @app.callback(
     Output('table_container', 'children'),
@@ -184,7 +271,7 @@ def update_table_container(selected_city):
 
 """
 -----------------------------------------------------------------------------------------
-Section 4: Define Scatter-Plot Color:
+Section 5: Define Scatter-Plot Color:
 """
 def get_image_path_color(selected_city):
     file_pattern_color = f'assets/*_{selected_city}_Color.jpg'
@@ -193,10 +280,10 @@ def get_image_path_color(selected_city):
         return 'http://127.0.0.1:8050/' + matching_files[0]
 
 @app.callback(
-    Output('plot_color', 'figure'),
+    Output('plot_color_1', 'figure'),
     [Input('dropdown_city', 'value'),
-     Input('dropdown_user_color', 'value'),
-     Input('range_slider_color', 'value')]
+     Input('dropdown_user_color_1', 'value'),
+     Input('range_slider_color_1', 'value')]
 )
 def update_scatter_plot_color(selected_city, selected_user, slider_value_color):
     if selected_city:
@@ -221,12 +308,6 @@ def update_scatter_plot_color(selected_city, selected_user, slider_value_color):
             (df['FixationDuration_aggregated'] >= slider_value_color[0]) &
             (df['FixationDuration_aggregated'] <= slider_value_color[1])
             ].sort_values(by='FixationIndex')
-
-        # Define the maximum extents for the plot
-        max_x = filtered_df['MappedFixationPointX'].max()
-        min_x = filtered_df['MappedFixationPointX'].min()
-        max_y = filtered_df['MappedFixationPointY'].max()
-        min_y = filtered_df['MappedFixationPointY'].min()
 
         # Create scatter plot using the color map
         fig = px.scatter(filtered_df,
@@ -283,7 +364,7 @@ def update_scatter_plot_color(selected_city, selected_user, slider_value_color):
 
 """
 -----------------------------------------------------------------------------------------
-Section 4: Define Scatter-Plot Grey:
+Section 6: Define Scatter-Plot Grey:
 """
 def get_image_path_grey(selected_city):
     file_pattern_grey = f'assets/*_{selected_city}_Grey.jpg'
@@ -292,7 +373,7 @@ def get_image_path_grey(selected_city):
         return 'http://127.0.0.1:8050/' + matching_files[0]
 
 @app.callback(
-    Output('plot_grey', 'figure'),
+    Output('plot_grey_1', 'figure'),
     [Input('dropdown_city', 'value'),
      Input('dropdown_user_grey', 'value'),
      Input('range_slider_grey', 'value')]
@@ -321,12 +402,6 @@ def update_scatter_plot_grey(selected_city, selected_user, slider_value_color):
             (df['FixationDuration_aggregated'] <= slider_value_color[1])
             ].sort_values(by='FixationIndex')
 
-        # Define the maximum extents for the plot
-        max_x = filtered_df['MappedFixationPointX'].max()
-        min_x = filtered_df['MappedFixationPointX'].min()
-        max_y = filtered_df['MappedFixationPointY'].max()
-        min_y = filtered_df['MappedFixationPointY'].min()
-
         # Create scatter plot using the color map
         fig = px.scatter(filtered_df,
                          x='MappedFixationPointX',
@@ -334,7 +409,7 @@ def update_scatter_plot_grey(selected_city, selected_user, slider_value_color):
                          size='FixationDuration',
                          color='user',
                          color_discrete_map=color_map,
-                         title=('Color Map Observations in ' + selected_city),
+                         title=('Greyscale Map Observations in ' + selected_city),
                          labels={
                              'MappedFixationPointX': 'X Coordinate',
                              'MappedFixationPointY': 'Y Coordinate',
@@ -379,6 +454,66 @@ def update_scatter_plot_grey(selected_city, selected_user, slider_value_color):
         return fig
     else:
         return px.scatter(title='Please select a city to view data')
+
+"""
+-----------------------------------------------------------------------------------------
+Section 7: Define Density Heat-Map Color:
+"""
+@app.callback(
+    Output('plot_color_2', 'figure'),
+    [Input('dropdown_city', 'value'),
+     Input('dropdown_user_color_2', 'value'),
+     Input('range_slider_color_2', 'value')]
+)
+
+def update_heatmap_color(selected_city, selected_user, slider_value_color):
+    if selected_city:
+        # Filter data based on the selected city
+        filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == 'color')]
+
+        # Check if a user is selected or the "All" option is chosen
+        if selected_user == 'All' or not selected_user:
+            user_filter = df['user'].notnull()  # If 'All' users or no user selected, include all non-null user entries
+        else:
+            user_filter = (df['user'] == selected_user)  # Specific user is selected
+
+        # Filter and sort data based on the selected filters
+        filtered_df = filtered_df[
+            (df['CityMap'] == selected_city) &
+            (df['description'] == 'color') &
+            user_filter &
+            (df['FixationDuration_aggregated'] >= slider_value_color[0]) &
+            (df['FixationDuration_aggregated'] <= slider_value_color[1])
+            ].sort_values(by='FixationIndex')
+
+        fig = px.density_contour(filtered_df,
+                                 x='MappedFixationPointX',
+                                 y='MappedFixationPointY',
+                                 nbinsx=20,
+                                 nbinsy=20,
+                                 title=('Color Map Observations in ' + selected_city),)
+
+        # Add Background Image
+        image_path_color = get_image_path_color(selected_city)
+        fig.add_layout_image(
+            dict(
+                source=image_path_color,
+                x=0,    # x-Position des Bildes in Pixel
+                sizex=1650,  # Breite des Bildes in Pixel
+                y=1200,    # y-Position des Bildes in Pixel
+                sizey=1200,  # Höhe des Bildes in Pixel
+                xref="x",
+                yref="y",
+                sizing="contain",  # Das Bild wird so skaliert, dass es komplett sichtbar ist, ohne gestreckt zu werden
+                opacity=0.6,
+                layer="below"
+            )
+        )
+        fig.update_layout(
+            plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
+            paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
+        )
+        return fig
 
 if __name__ == '__main__':
     app.run_server(debug=True)
