@@ -5,119 +5,186 @@ import plotly.express as px
 import glob
 import plotly.graph_objects as go
 
-# Initialization of the Dash app:
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP, '/assets/custom.css'])
 
 """
 -----------------------------------------------------------------------------------------
-
+Section 1:
 Data Import and Preparation
 """
 # Data reading:
-data_path = 'assets/all_fixation_data_cleaned_up.csv'
+data_path = 'assets/all_fixation_data_cleaned_up_2.csv'
 df = pd.read_csv(data_path, sep=';')
+# Task Duration in sec per User and Stimulus:
+task_duration = df.groupby(['user', 'CityMap', 'description'])['FixationDuration'].sum().reset_index()
+task_duration['FixationDuration'] = task_duration['FixationDuration'] / 1000
+df = pd.merge(df, task_duration, on=['user', 'CityMap', 'description'], suffixes=('', '_aggregated'))
+#print(df)
+
 """
 -----------------------------------------------------------------------------------------
+Section 2:
 Definition of Dash Layout
 """
 app.layout = html.Div([
-    html.Div(
-        id='header-area',
-        children=[
-            html.H1('Dashboard for the visual analysis of Eye-Tracking data,'),
-            html.H1("based on Metro Maps of different Cities.")
-
-        ]
-    ),
-    html.Div(
-        id='dropdown-area',
-        children=[
-            html.P("Please select a City-Map:"),
-            dcc.Dropdown(
-                id='dropdown_city',
-                options=[{'label': city, 'value': city} for city in sorted(df['CityMap'].unique())]
-            ),
-        ]
-    ),
-    # Zeile 1:
-    dbc.Row([
-        dbc.Col(
-            html.Img(
-                id='city_image',
-                style={'width': '90%', 'height': 'auto%'}),
-            width=6),
-        dbc.Col(
+    # 1. Spalte mit drei Zeilen
+    html.Div([
+        html.Div(
+            id='header-area',
             children=[
+                # Zeile 1 - Header-Area:
+                html.H1('Analysis of Eye-Tracking Data'),
+                html.H2('This dashboard enables the visual analysis of eye-tracking data,'
+                   ' based on metro maps of different European cities.')
+            ]
+        ),
+        html.Div(
+            id='selection-area',
+            children=[
+                # Zeile 2 - Selection-Area:
+                html.P('Please select a City-Map:'),
+                dcc.Dropdown(
+                    id='dropdown_city',
+                    options=[{'label': city, 'value': city} for city in sorted(df['CityMap'].unique())]
+                )]
+            ),
+        html.Div(
+            id='kpi-area',
+            children=[
+                # Zeile 3 - KPI-Area:
+                html.P('Statistical Key Performance Indicators:'),
+                dcc.Tab(
+                    id='table_container'
+                )]
+            )
+    ], className='six columns'),
+    # 2. Spalte mit zwei Zeilen
+    html.Div([
+        html.Div(
+            id='color_plot_area',
+            children=[
+                # Zeile 1 - Color-Plot-Area:
+                html.Img(
+                    id='city_image_color',
+                    style={'width': '90%', 'height': 'auto%'}),
+                dcc.Graph(
+                    id='plot_color'),
+                html.P('Select a User'),
                 dcc.Dropdown(
                     id='dropdown_user_color',
-                    options=[
-                        {'label': user,
-                         'value': user}
-                        for user in sorted(df[df['description'] == 'color']['user'].unique())],
+                    options=[{'label': user, 'value': user} for user in sorted(df[df['description'] == 'color']['user'].unique())],
                 ),
-                dcc.Graph(
-                    id="scatter_plot_color"),
-                html.P("Select a range of Fixation Duration"),
+                html.P('Select a range of Task Duration'),
                 dcc.RangeSlider(
                     id='range_slider_color',
-                    min=df[df['description'] == 'color']['FixationDuration'].min(),
-                    max=df[df['description'] == 'color']['FixationDuration'].max(),
+                    min=1,
+                    max=50,
                     step=None,
                     value=[
-                        df[df['description'] == 'color']['FixationDuration'].min(),
-                        df[df['description'] == 'color']['FixationDuration'].max()
-                    ],
+                        df[df['description'] == 'color']['FixationDuration_aggregated'].min(),
+                        df[df['description'] == 'color']['FixationDuration_aggregated'].max()],
                 )
-            ],width=6)
-    ]),
-    # Zeile 2:
-    dbc.Row([
-        dbc.Col(
-            html.Div(
-                id="table_container"
-            ), width=6),
-        dbc.Col(
+            ]),
+        html.Div(
+            id='grey_plot_area',
             children=[
+                # Zeile 2 - Grey-Plot-Area:
+                html.Img(
+                    id='city_image_grey',
+                    style={'width': '90%', 'height': 'auto%'}),
+                dcc.Graph(
+                    id='plot_grey'),
+                html.P('Select a User'),
                 dcc.Dropdown(
                     id='dropdown_user_grey',
-                    options=[
-                        {'label': user,
-                         'value': user}
-                        for user in sorted(df[df['description'] == 'gray']['user'].unique())],
+                    options=[{'label': user, 'value': user} for user in
+                             sorted(df[df['description'] == 'grey']['user'].unique())],
                 ),
-                dcc.Graph(
-                    id="scatter_plot_grey"),
-                html.P("Select a range of Fixation Duration"),
+                html.P('Select a range of Task Duration'),
                 dcc.RangeSlider(
                     id='range_slider_grey',
-                    min=df[df['description'] == 'gray']['FixationDuration'].min(),
-                    max=df[df['description'] == 'gray']['FixationDuration'].max(),
+                    min=1,
+                    max=50,
                     step=None,
                     value=[
-                        df[df['description'] == 'gray']['FixationDuration'].min(),
-                        df[df['description'] == 'gray']['FixationDuration'].max()
-                    ],
+                        df[df['description'] == 'grey']['FixationDuration_aggregated'].min(),
+                        df[df['description'] == 'grey']['FixationDuration_aggregated'].max()],
                 )
-            ],width=6)
-    ])
-])
+            ])
+    ], className='six columns')
+], className='row')
+
 """
 -----------------------------------------------------------------------------------------
-
-Bild-Anzeige (Zeile 1, Spalte 1)
+Section 3: Define KPI-Area:
 """
 @app.callback(
-    Output('city_image', 'src'),
+    Output('table_container', 'children'),
     [Input('dropdown_city', 'value')]
 )
-def update_image(selected_city):
+def update_table_container(selected_city):
     if selected_city:
-        return f'assets/{selected_city}.jpg'
-    return None
+        # Filter data based on the selected city
+        filtered_df = df[(df['CityMap'] == selected_city)]
+
+        # 1. Average Task Duration (seconds):
+        # Sum of FixationDuration per Color / Number of Users per Color
+        avg_task_color = (filtered_df[filtered_df['description'] == 'color']['FixationDuration'].sum() / filtered_df[filtered_df['description'] == 'color']['user'].nunique()) / 1000
+        avg_task_grey = (filtered_df[filtered_df['description'] == 'grey']['FixationDuration'].sum() / filtered_df[filtered_df['description'] == 'grey']['user'].nunique()) / 1000
+
+        # 2. Number of Fixation-Points (without unit):
+        fixation_points_color = filtered_df[filtered_df['description'] == 'color'].shape[0]
+        fixation_points_grey = filtered_df[filtered_df['description'] == 'grey'].shape[0]
+
+        # 3. Average Saccade Length (without unit):
+        # Lenght of the movement between two fixation points
+        avg_saccade_color = filtered_df[filtered_df['description'] == 'color']['SaccadeLength'].mean()
+        avg_saccade_grey = filtered_df[filtered_df['description'] == 'grey']['SaccadeLength'].mean()
+
+        table = dash_table.DataTable(
+            columns=[
+                {"name": "KPI", "id": "KPI"},
+                {"name": "Color Map", "id": "color"},
+                {"name": "Greyscale Map", "id": "greyscale"}
+            ],
+            data=[
+                {"KPI": "Average Task Duration", "color": f"{round(avg_task_color,2)} sec", "greyscale": f"{round(avg_task_grey,2)} sec"},
+                {"KPI": "Number of Fixation-Points", "color": fixation_points_color, "greyscale": fixation_points_grey},
+                {"KPI": "Average Saccade Length", "color": round(avg_saccade_color,2), "greyscale": round(avg_saccade_grey,2)}
+            ],
+            style_cell={
+                'textAlign': 'left',
+                'minWidth': '0px',
+                'maxWidth': '180px'
+                },  # Left-align text in cells
+            style_header={
+            'backgroundColor': '#000000',  # Set header background color
+            'color': '#FFFFFF'  # Set header text color to white
+                },
+            style_data_conditional=[{
+                'if': {'row_index': 0},  # Style the second row
+                    'backgroundColor': '#E6E6E6',  # Set background color
+                    'color': '#000000'  # Set text color
+                },
+                {
+                'if': {'row_index': 1},  # Style the third row
+                    'backgroundColor': '#CBCBCB',  # Set background color
+                    'color': '#000000'  # Set text color
+                },
+                {
+                'if': {'row_index': 2},  # Style the fourth row
+                    'backgroundColor': '#E6E6E6',  # Set background color
+                    'color': '#000000'  # Set text color
+                }
+            ]
+        )
+        return table
+    else:
+        return "Please select a city to view data"
+
 """
 -----------------------------------------------------------------------------------------
-
-Scatter_plot_color (Zeile 1, Spalte 2):
+Section 4: Define Scatter-Plot Color:
 """
 def get_image_path_color(selected_city):
     file_pattern_color = f'assets/*_{selected_city}_Color.jpg'
@@ -126,7 +193,7 @@ def get_image_path_color(selected_city):
         return 'http://127.0.0.1:8050/' + matching_files[0]
 
 @app.callback(
-    Output('scatter_plot_color', 'figure'),
+    Output('plot_color', 'figure'),
     [Input('dropdown_city', 'value'),
      Input('dropdown_user_color', 'value'),
      Input('range_slider_color', 'value')]
@@ -142,8 +209,7 @@ def update_scatter_plot_color(selected_city, selected_user, slider_value_color):
 
         # Check if a user is selected or the "All" option is chosen
         if selected_user == 'All' or not selected_user:
-            user_filter = df[
-                'user'].notnull()  # If 'All' users or no user selected, include all non-null user entries
+            user_filter = df['user'].notnull()  # If 'All' users or no user selected, include all non-null user entries
         else:
             user_filter = (df['user'] == selected_user)  # Specific user is selected
 
@@ -152,8 +218,8 @@ def update_scatter_plot_color(selected_city, selected_user, slider_value_color):
             (df['CityMap'] == selected_city) &
             (df['description'] == 'color') &
             user_filter &
-            (df['FixationDuration'] >= slider_value_color[0]) &
-            (df['FixationDuration'] <= slider_value_color[1])
+            (df['FixationDuration_aggregated'] >= slider_value_color[0]) &
+            (df['FixationDuration_aggregated'] <= slider_value_color[1])
             ].sort_values(by='FixationIndex')
 
         # Define the maximum extents for the plot
@@ -169,7 +235,7 @@ def update_scatter_plot_color(selected_city, selected_user, slider_value_color):
                          size='FixationDuration',
                          color='user',
                          color_discrete_map=color_map,
-                         title=('Colored Metro Map Observations in ' + selected_city),
+                         title=('Color Map Observations in ' + selected_city),
                          labels={
                              'MappedFixationPointX': 'X Coordinate',
                              'MappedFixationPointY': 'Y Coordinate',
@@ -187,7 +253,7 @@ def update_scatter_plot_color(selected_city, selected_user, slider_value_color):
                     y=user_df['MappedFixationPointY'],
                     mode='lines',
                     line=dict(width=2, color=color_map[user]),
-                    name=f"Path for {user}"
+                    name=f"Scanpath for {user}"
                 )
             )
 
@@ -215,77 +281,9 @@ def update_scatter_plot_color(selected_city, selected_user, slider_value_color):
     else:
         return px.scatter(title='Please select a city to view data')
 
-
 """
 -----------------------------------------------------------------------------------------
-
-# KPI Tabelle (Zeile 2, Spalte 1):
-"""
-@app.callback(
-    Output('table_container', 'children'),
-    [Input('dropdown_city', 'value')]
-)
-def update_table_container(selected_city):
-    if selected_city:
-        # Filter data based on the selected city
-        filtered_df = df[(df['City'] == selected_city)]
-
-        # Calculations based on filtered DataFrame
-        fixation_duration_color = filtered_df[filtered_df['description'] == 'color']['FixationDuration'].sum()
-        fixation_duration_grey = filtered_df[filtered_df['description'] == 'gray']['FixationDuration'].sum()
-        total_fixations_color = filtered_df[filtered_df['description'] == 'color'].shape[0]
-        #total_fixations_color = len(filtered_df[df['description'] == 'color'])
-        total_fixations_grey = filtered_df[filtered_df['description'] == 'gray'].shape[0]
-        #total_fixations_grey = len(filtered_df[df['description'] == 'gray'])
-        average_fixation_duration_color = filtered_df[df['description'] == 'color']['FixationDuration'].mean()
-        #average_fixation_duration_color = fixation_duration_color / total_fixations_color if total_fixations_color else 0
-        average_fixation_duration_grey = filtered_df[df['description'] == 'gray']['FixationDuration'].mean()
-        #average_fixation_duration_grey = fixation_duration_grey / total_fixations_grey if total_fixations_grey else 0
-
-        table = dash_table.DataTable(
-            columns=[
-                {"name": "KPI", "id": "KPI"},
-                {"name": "Color Map", "id": "Color"},
-                {"name": "Greyscale Map", "id": "Greyscale"}
-            ],
-            data=[
-                {"KPI": "Fixation Duration", "Color": f"{round(fixation_duration_color,2)} ms", "Greyscale": f"{round(fixation_duration_grey,2)} ms"},
-                {"KPI": "Number of Fixation-Points", "Color": total_fixations_color, "Greyscale": total_fixations_grey},
-                {"KPI": "Average Fixation-Duration", "Color": f"{round(average_fixation_duration_color,2)} ms", "Greyscale": f"{round(average_fixation_duration_grey,2)} ms"}
-            ],
-            style_cell={
-                'textAlign': 'left',
-                'minWidth': '0px',
-                'maxWidth': '180px'
-                },  # Left-align text in cells
-            style_header={
-            'backgroundColor': 'rgb(7, 0, 97)',  # Set header background color
-            'color': 'rgb(255,255,255)'  # Set header text color to white
-                },
-            style_data_conditional=[{
-                'if': {'row_index': 0},  # Style the second row
-                    'backgroundColor': 'rgb(115, 121, 181)',  # Set background color
-                    'color': 'black'  # Set text color
-                },
-                {
-                'if': {'row_index': 1},  # Style the third row
-                    'backgroundColor': 'rgb(115, 121, 181)',  # Set background color
-                    'color': 'black'  # Set text color
-                },
-                {
-                'if': {'row_index': 2},  # Style the fourth row
-                    'backgroundColor': 'rgb(115, 121, 181)',  # Set background color
-                    'color': 'black'  # Set text color
-                }
-            ]
-        )
-        return table
-    else:
-        return "Please select a city to view data"
-"""
------------------------------------------------------------------------------------------
-
-Scatter_plot_grey (Zeile 2, Spalte 2):
+Section 4: Define Scatter-Plot Grey:
 """
 def get_image_path_grey(selected_city):
     file_pattern_grey = f'assets/*_{selected_city}_Grey.jpg'
@@ -294,63 +292,93 @@ def get_image_path_grey(selected_city):
         return 'http://127.0.0.1:8050/' + matching_files[0]
 
 @app.callback(
-    Output('scatter_plot_grey', 'figure'),
+    Output('plot_grey', 'figure'),
     [Input('dropdown_city', 'value'),
      Input('dropdown_user_grey', 'value'),
      Input('range_slider_grey', 'value')]
 )
-def update_scatter_plot_grey(selected_city, selected_user, slider_value_grey):
+def update_scatter_plot_grey(selected_city, selected_user, slider_value_color):
     if selected_city:
+        # Define a color map for users
+        unique_users = df['user'].dropna().unique()
+        colors = px.colors.qualitative.Plotly  # Use Plotly's qualitative color scale
+
+        # Create a dictionary to map each user to a specific color
+        color_map = {user: colors[i % len(colors)] for i, user in enumerate(unique_users)}
+
         # Check if a user is selected or the "All" option is chosen
         if selected_user == 'All' or not selected_user:
-            user_filter = (
-                df['user'].notnull())  # If 'All' users or no user selected, include all non-null user entries
+            user_filter = df['user'].notnull()  # If 'All' users or no user selected, include all non-null user entries
         else:
             user_filter = (df['user'] == selected_user)  # Specific user is selected
-        # Filter data based on the selected filters
+
+        # Filter and sort data based on the selected filters
         filtered_df = df[
-            (df['City'] == selected_city) &
-            (df['description'] == 'gray') &
+            (df['CityMap'] == selected_city) &
+            (df['description'] == 'grey') &
             user_filter &
-            (df['FixationDuration'] >= slider_value_grey[0]) &
-            (df['FixationDuration'] <= slider_value_grey[1])
-            ]
+            (df['FixationDuration_aggregated'] >= slider_value_color[0]) &
+            (df['FixationDuration_aggregated'] <= slider_value_color[1])
+            ].sort_values(by='FixationIndex')
+
+        # Define the maximum extents for the plot
+        max_x = filtered_df['MappedFixationPointX'].max()
+        min_x = filtered_df['MappedFixationPointX'].min()
+        max_y = filtered_df['MappedFixationPointY'].max()
+        min_y = filtered_df['MappedFixationPointY'].min()
+
+        # Create scatter plot using the color map
         fig = px.scatter(filtered_df,
                          x='MappedFixationPointX',
                          y='MappedFixationPointY',
                          size='FixationDuration',
                          color='user',
-                         title=('Greyscale Metro Map Observations in ' + selected_city),
+                         color_discrete_map=color_map,
+                         title=('Color Map Observations in ' + selected_city),
                          labels={
                              'MappedFixationPointX': 'X Coordinate',
                              'MappedFixationPointY': 'Y Coordinate',
                              'FixationDuration': 'Duration (ms)'
                          })
+        fig.update_xaxes(range=[0, 1650])
+        fig.update_yaxes(range=[0, 1200])
+
+        # Add line traces for each user
+        for user in filtered_df['user'].unique():
+            user_df = filtered_df[filtered_df['user'] == user]
+            fig.add_trace(
+                go.Scatter(
+                    x=user_df['MappedFixationPointX'],
+                    y=user_df['MappedFixationPointY'],
+                    mode='lines',
+                    line=dict(width=2, color=color_map[user]),
+                    name=f"Scanpath for {user}"
+                )
+            )
+
+        # Add Background Image
         image_path_grey = get_image_path_grey(selected_city)
         fig.add_layout_image(
             dict(
                 source=image_path_grey,
-                x=0,
-                sizex=filtered_df['MappedFixationPointX'].max(),
-                y=filtered_df['MappedFixationPointY'].max(),
-                sizey=filtered_df['MappedFixationPointY'].max(),
+                x=0,    # x-Position des Bildes in Pixel
+                sizex=1650,  # Breite des Bildes in Pixel
+                y=1200,    # y-Position des Bildes in Pixel
+                sizey=1200,  # Höhe des Bildes in Pixel
                 xref="x",
                 yref="y",
-                sizing="stretch",
+                sizing="contain",  # Das Bild wird so skaliert, dass es komplett sichtbar ist, ohne gestreckt zu werden
                 opacity=0.6,
                 layer="below"
             )
         )
-        fig["layout"].pop("updatemenus")  # optional, drop animation buttons
         fig.update_layout(
             plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
-            paper_bgcolor='rgba(0, 0, 0, 0)'  # Set paper color to transparent
+            paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
         )
         return fig
     else:
         return px.scatter(title='Please select a city to view data')
-
-
 
 if __name__ == '__main__':
     app.run_server(debug=True)
