@@ -27,91 +27,65 @@ Section 2:
 Definition of Dash Layout
 """
 app.layout = html.Div([
-    # 1. Spalte mit drei Zeilen
-    html.Div([
+    html.Div([                          # Spalte 1
         html.Div(
-            id='header-area',
+            id='header-area',                   # Spalte 1 / Container 1
             children=[
-                # Zeile 1 - Header-Area:
                 html.H1('Analysis of Eye-Tracking Data'),
                 html.H2('This dashboard enables the visual analysis of eye-tracking data,'
                    ' based on metro maps of different European cities.')
             ]
         ),
         html.Div(
-            id='selection-area',
+            id='selection-area',                # Spalte 1 / Container 2
             children=[
-                # Zeile 2 - Selection-Area:
                 html.P('Please select a City-Map:'),
                 dcc.Dropdown(
                     id='dropdown_city',
-                    options=[{'label': city, 'value': city} for city in sorted(df['CityMap'].unique())]
-                                ),
+                    options=[{'label': city, 'value': city} for city in sorted(df['CityMap'].unique())],
+                    value=None),
                 html.P('Choose a Type of Visualization:'),
                 dcc.RadioItems(
                     id='radio_visualization',
-                    options=[
-                        {'label': 'Gaze-Plot', 'value': 'Gaze-Plot'},
-                        {'label': 'Heat-Map', 'value': 'Heat-Map'}]
-                )
+                    options=[{'label': i, 'value': i} for i in ['Gaze-Plot', 'Heat Map']],
+                    value='Gaze-Plot')
             ]
         ),
         html.Div(
-            id='kpi-area',
+            id='kpi-area',                      # Spalte 1 / Container 3
             children=[
-                # Zeile 3 - KPI-Area:
                 html.P('Statistical Key Performance Indicators:'),
                 dcc.Tab(
                     id='table_container'
                 )]
             )
     ], className='six columns'),
-    # 2. Spalte mit zwei Zeilen
-    html.Div([
-        html.Div(
-            id='color_plot_area',
-            children=[
-                # Zeile 1 - Color-Plot-Area:
-                html.Img(
-                    id='city_image_color',
-                    style={'width': '90%', 'height': 'auto%'}),
-                dcc.Graph(
-                    id='plot_color_1'),
-                html.P('Select a User'),
-                dcc.Dropdown(
-                    id='dropdown_user_color_1',
-                    options=[{'label': user, 'value': user} for user in
-                             sorted(df[df['description'] == 'color']['user'].unique())],
-                ),
-                html.P('Select a range of Task Duration'),
-                dcc.RangeSlider(
-                    id='range_slider_color_1',
-                    min=1,
-                    max=50,
-                    step=None,
-                    value=[
-                        df[df['description'] == 'color']['FixationDuration_aggregated'].min(),
-                        df[df['description'] == 'color']['FixationDuration_aggregated'].max()],
-                ),
-                dcc.Graph(
-                    id='plot_color_2'),
-                html.P('Select a User'),
-                dcc.Dropdown(
-                    id='dropdown_user_color_2',
-                    options=[{'label': user, 'value': user} for user in
-                             sorted(df[df['description'] == 'color']['user'].unique())],
-                ),
-                html.P('Select a range of Task Duration'),
-                dcc.RangeSlider(
-                    id='range_slider_color_2',
-                    min=1,
-                    max=50,
-                    step=None,
-                    value=[
-                        df[df['description'] == 'color']['FixationDuration_aggregated'].min(),
-                        df[df['description'] == 'color']['FixationDuration_aggregated'].max()],
-                )
-            ]),
+    html.Div([                          # Spalte 2
+        html.Div(id='color_plot_area',
+                 children=[                     # Spalte 2 / Container 1 (color)
+                     html.Img(
+                        id='city_image_color',
+                        style={'width': '90%', 'height': 'auto%'}),
+                     dcc.Graph(
+                         id='gaze_plot'),
+                     dcc.Graph(
+                         id='heat_map'),
+                     html.P('Select a User'),
+                     dcc.Dropdown(
+                         id='dropdown_user_color',
+                         options=[{'label': user, 'value': user} for user in
+                                  sorted(df[df['description'] == 'color']['user'].unique())],
+                         value=None),
+                     html.P('Select a range of Task Duration'),
+                     dcc.RangeSlider(
+                          id='range_slider_color',
+                          min=1,
+                          max=50,
+                          step=None,
+                          value=[
+                              df[df['description'] == 'color']['FixationDuration_aggregated'].min(),
+                              df[df['description'] == 'color']['FixationDuration_aggregated'].max()]),
+                 ]),
         html.Div(
             id='grey_plot_area',
             children=[
@@ -154,51 +128,13 @@ Section 3: Define Plot-Selection Area:
 def update_plot_area(visualization_type):
     if visualization_type == 'Gaze-Plot':
         return [
-            html.Img(
-                id='city_image_color',
-                style={'width': '90%', 'height': 'auto%'}),
-            dcc.Graph(
-                id='plot_color_1'),
-            html.P('Select a User'),
-            dcc.Dropdown(
-                id='dropdown_user_color_1',
-                options=[{'label': user, 'value': user} for user in
-                         sorted(df[df['description'] == 'color']['user'].unique())],
-            ),
-            html.P('Select a range of Task Duration'),
-            dcc.RangeSlider(
-                id='range_slider_color_1',
-                min=1,
-                max=50,
-                step=None,
-                value=[
-                    df[df['description'] == 'color']['FixationDuration_aggregated'].min(),
-                    df[df['description'] == 'color']['FixationDuration_aggregated'].max()],
-            )
+            dcc.Graph(id='gaze_plot', style={'display': 'block'}),
+            dcc.Graph(id='heat_map', style={'display': 'none'})
         ]
-    else:
+    elif visualization_type == 'Heat Map':
         return [
-            html.Img(
-                id='city_image_color',
-                style={'width': '90%', 'height': 'auto%'}),
-            dcc.Graph(
-                id='plot_color_2'),
-            html.P('Select a User'),
-            dcc.Dropdown(
-                id='dropdown_user_color_2',
-                options=[{'label': user, 'value': user} for user in
-                         sorted(df[df['description'] == 'color']['user'].unique())],
-            ),
-            html.P('Select a range of Task Duration'),
-            dcc.RangeSlider(
-                id='range_slider_color_2',
-                min=1,
-                max=50,
-                step=None,
-                value=[
-                    df[df['description'] == 'color']['FixationDuration_aggregated'].min(),
-                    df[df['description'] == 'color']['FixationDuration_aggregated'].max()],
-            )
+            dcc.Graph(id='gaze_plot', style={'display': 'none'}),
+            dcc.Graph(id='heat_map', style={'display': 'block'})
         ]
 
 """
@@ -280,12 +216,13 @@ def get_image_path_color(selected_city):
         return 'http://127.0.0.1:8050/' + matching_files[0]
 
 @app.callback(
-    Output('plot_color_1', 'figure'),
-    [Input('dropdown_city', 'value'),
-     Input('dropdown_user_color_1', 'value'),
-     Input('range_slider_color_1', 'value')]
+    Output('gaze_plot', 'figure'),
+    [Input('dropdown_city', 'value')],
+     #Input('dropdown_user_color', 'value'),
+     #Input('range_slider_color', 'value')],
+    prevent_initial_call=True
 )
-def update_scatter_plot_color(selected_city, selected_user, slider_value_color):
+def update_scatter_plot_color(selected_city):
     if selected_city:
         # Define a color map for users
         unique_users = df['user'].dropna().unique()
@@ -295,18 +232,18 @@ def update_scatter_plot_color(selected_city, selected_user, slider_value_color):
         color_map = {user: colors[i % len(colors)] for i, user in enumerate(unique_users)}
 
         # Check if a user is selected or the "All" option is chosen
-        if selected_user == 'All' or not selected_user:
-            user_filter = df['user'].notnull()  # If 'All' users or no user selected, include all non-null user entries
-        else:
-            user_filter = (df['user'] == selected_user)  # Specific user is selected
+        #if selected_user == 'All' or not selected_user:
+        #    user_filter = df['user'].notnull()  # If 'All' users or no user selected, include all non-null user entries
+        #else:
+        #    user_filter = (df['user'] == selected_user)  # Specific user is selected
 
         # Filter and sort data based on the selected filters
         filtered_df = df[
-            (df['CityMap'] == selected_city) &
-            (df['description'] == 'color') &
-            user_filter &
-            (df['FixationDuration_aggregated'] >= slider_value_color[0]) &
-            (df['FixationDuration_aggregated'] <= slider_value_color[1])
+            (df['CityMap'] == selected_city) #&
+            #(df['description'] == 'color') &
+            #user_filter &
+            #(df['FixationDuration_aggregated'] >= slider_value_color[0]) &
+            #(df['FixationDuration_aggregated'] <= slider_value_color[1])
             ].sort_values(by='FixationIndex')
 
         # Create scatter plot using the color map
@@ -460,30 +397,31 @@ def update_scatter_plot_grey(selected_city, selected_user, slider_value_color):
 Section 7: Define Density Heat-Map Color:
 """
 @app.callback(
-    Output('plot_color_2', 'figure'),
-    [Input('dropdown_city', 'value'),
-     Input('dropdown_user_color_2', 'value'),
-     Input('range_slider_color_2', 'value')]
+    Output('heat_map', 'figure'),
+    [Input('dropdown_city', 'value')],
+     #Input('dropdown_user_color', 'value'),
+     #Input('range_slider_color', 'value')],
+    prevent_initial_call=True
 )
 
-def update_heatmap_color(selected_city, selected_user, slider_value_color):
+def update_heatmap_color(selected_city):
     if selected_city:
         # Filter data based on the selected city
         filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == 'color')]
 
         # Check if a user is selected or the "All" option is chosen
-        if selected_user == 'All' or not selected_user:
-            user_filter = df['user'].notnull()  # If 'All' users or no user selected, include all non-null user entries
-        else:
-            user_filter = (df['user'] == selected_user)  # Specific user is selected
+        #if selected_user == 'All' or not selected_user:
+        #    user_filter = df['user'].notnull()  # If 'All' users or no user selected, include all non-null user entries
+        #else:
+        #    user_filter = (df['user'] == selected_user)  # Specific user is selected
 
         # Filter and sort data based on the selected filters
         filtered_df = filtered_df[
-            (df['CityMap'] == selected_city) &
-            (df['description'] == 'color') &
-            user_filter &
-            (df['FixationDuration_aggregated'] >= slider_value_color[0]) &
-            (df['FixationDuration_aggregated'] <= slider_value_color[1])
+            (df['CityMap'] == selected_city)
+            #(df['description'] == 'color') &
+            #user_filter &
+            #(df['FixationDuration_aggregated'] >= slider_value_color[0]) &
+            #(df['FixationDuration_aggregated'] <= slider_value_color[1])
             ].sort_values(by='FixationIndex')
 
         fig = px.density_contour(filtered_df,
@@ -492,6 +430,7 @@ def update_heatmap_color(selected_city, selected_user, slider_value_color):
                                  nbinsx=20,
                                  nbinsy=20,
                                  title=('Color Map Observations in ' + selected_city),)
+
 
         # Add Background Image
         image_path_color = get_image_path_color(selected_city)
@@ -514,6 +453,8 @@ def update_heatmap_color(selected_city, selected_user, slider_value_color):
             paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
         )
         return fig
+    else:
+        return px.scatter(title='Please select a city to view data')
 
 if __name__ == '__main__':
     app.run_server(debug=True)
