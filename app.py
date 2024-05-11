@@ -259,7 +259,7 @@ def update_scatter_plot_color(selected_city):
                              'MappedFixationPointY': 'Y Coordinate',
                              'FixationDuration': 'Duration (ms)'
                          })
-        fig.update_xaxes(range=[0, 1960])
+        fig.update_xaxes(range=[0, 1651])
         fig.update_yaxes(range=[0, 1200])
 
         # Add line traces for each user
@@ -280,8 +280,8 @@ def update_scatter_plot_color(selected_city):
         fig.add_layout_image(
             dict(
                 source=image_path_color,
-                x=0,    # x-Position des Bildes in Pixel
-                sizex=1960,  # None setzt die Originalbreite
+                x=154.5,    # x-Position des Bildes in Pixel
+                sizex=1805.5,  # None setzt die Originalbreite
                 y=1200,    # y-Position des Bildes in Pixel
                 sizey=1200,  # None setzt die Originalhöhe
                 xref="x",
@@ -352,8 +352,8 @@ def update_scatter_plot_grey(selected_city, selected_user, slider_value_color):
                              'MappedFixationPointY': 'Y Coordinate',
                              'FixationDuration': 'Duration (ms)'
                          })
-        #fig.update_xaxes(range=[0, 1960])
-        #fig.update_yaxes(range=[0, 1200])
+        fig.update_xaxes(range=[0, 1960])
+        fig.update_yaxes(range=[0, 1200])
 
         # Add line traces for each user
         for user in filtered_df['user'].unique():
@@ -373,7 +373,7 @@ def update_scatter_plot_grey(selected_city, selected_user, slider_value_color):
         fig.add_layout_image(
             dict(
                 source=image_path_grey,
-                x=0,    # x-Position des Bildes in Pixel
+                x=154.5,    # x-Position des Bildes in Pixe
                 sizex=1960,  # Originalbreite
                 y=1200,    # y-Position des Bildes in Pixel
                 sizey=1200,  # None setzt die Originalhöhe
@@ -431,14 +431,16 @@ def update_heatmap_color(selected_city):
                                  nbinsy=20,
                                  title=('Color Map Observations in ' + selected_city),)
 
+        fig.update_xaxes(range=[0, 1960])
+        fig.update_yaxes(range=[0, 1200])
 
         # Add Background Image
         image_path_color = get_image_path_color(selected_city)
         fig.add_layout_image(
             dict(
                 source=image_path_color,
-                x=0,    # x-Position des Bildes in Pixel
-                sizex=1960,  # None setzt die Originalbreite
+                x=154.5,    # x-Position des Bildes in Pixel
+                sizex=1805.5,  # None setzt die Originalbreite
                 y=1200,    # y-Position des Bildes in Pixel
                 sizey=1200,  # None setzt die Originalhöhe
                 xref="x",
