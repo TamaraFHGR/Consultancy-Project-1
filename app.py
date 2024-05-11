@@ -13,7 +13,7 @@ Section 1:
 Data Import and Preparation
 """
 # Data reading:
-data_path = 'assets/all_fixation_data_cleaned_up_2.csv'
+data_path = 'assets/all_fixation_data_cleaned_up_3.csv'
 df = pd.read_csv(data_path, sep=';')
 # Task Duration in sec per User and Stimulus:
 task_duration = df.groupby(['user', 'CityMap', 'description'])['FixationDuration'].sum().reset_index()
@@ -65,7 +65,7 @@ app.layout = html.Div([
                  children=[                     # Spalte 2 / Container 1 (color)
                      html.Img(
                         id='city_image_color',
-                        style={'width': '90%', 'height': 'auto%'}),
+                        style={'width': 'auto', 'height': 'auto'}),
                      dcc.Graph(
                          id='gaze_plot'),
                      dcc.Graph(
@@ -92,7 +92,7 @@ app.layout = html.Div([
                 # Zeile 2 - Grey-Plot-Area:
                 html.Img(
                     id='city_image_grey',
-                    style={'width': '90%', 'height': 'auto%'}),
+                    style={'width': 'auto', 'height': 'auto'}),
                 dcc.Graph(
                     id='plot_grey_1'),
                 html.P('Select a User'),
@@ -248,18 +248,18 @@ def update_scatter_plot_color(selected_city):
 
         # Create scatter plot using the color map
         fig = px.scatter(filtered_df,
-                         x='MappedFixationPointX',
+                         x='NormalizedXFixationPointX',
                          y='MappedFixationPointY',
                          size='FixationDuration',
                          color='user',
                          color_discrete_map=color_map,
                          title=('Color Map Observations in ' + selected_city),
                          labels={
-                             'MappedFixationPointX': 'X Coordinate',
+                             'NormalizedXFixationPointX': 'X Coordinate',
                              'MappedFixationPointY': 'Y Coordinate',
                              'FixationDuration': 'Duration (ms)'
                          })
-        fig.update_xaxes(range=[0, 1650])
+        fig.update_xaxes(range=[0, 1960])
         fig.update_yaxes(range=[0, 1200])
 
         # Add line traces for each user
@@ -267,7 +267,7 @@ def update_scatter_plot_color(selected_city):
             user_df = filtered_df[filtered_df['user'] == user]
             fig.add_trace(
                 go.Scatter(
-                    x=user_df['MappedFixationPointX'],
+                    x=user_df['NormalizedXFixationPointX'],
                     y=user_df['MappedFixationPointY'],
                     mode='lines',
                     line=dict(width=2, color=color_map[user]),
@@ -281,9 +281,9 @@ def update_scatter_plot_color(selected_city):
             dict(
                 source=image_path_color,
                 x=0,    # x-Position des Bildes in Pixel
-                sizex=1650,  # Breite des Bildes in Pixel
+                sizex=1960,  # None setzt die Originalbreite
                 y=1200,    # y-Position des Bildes in Pixel
-                sizey=1200,  # Höhe des Bildes in Pixel
+                sizey=1200,  # None setzt die Originalhöhe
                 xref="x",
                 yref="y",
                 sizing="contain",  # Das Bild wird so skaliert, dass es komplett sichtbar ist, ohne gestreckt zu werden
@@ -341,26 +341,26 @@ def update_scatter_plot_grey(selected_city, selected_user, slider_value_color):
 
         # Create scatter plot using the color map
         fig = px.scatter(filtered_df,
-                         x='MappedFixationPointX',
+                         x='NormalizedXFixationPointX',
                          y='MappedFixationPointY',
                          size='FixationDuration',
                          color='user',
                          color_discrete_map=color_map,
                          title=('Greyscale Map Observations in ' + selected_city),
                          labels={
-                             'MappedFixationPointX': 'X Coordinate',
+                             'NormalizedXFixationPointX': 'X Coordinate',
                              'MappedFixationPointY': 'Y Coordinate',
                              'FixationDuration': 'Duration (ms)'
                          })
-        fig.update_xaxes(range=[0, 1650])
-        fig.update_yaxes(range=[0, 1200])
+        #fig.update_xaxes(range=[0, 1960])
+        #fig.update_yaxes(range=[0, 1200])
 
         # Add line traces for each user
         for user in filtered_df['user'].unique():
             user_df = filtered_df[filtered_df['user'] == user]
             fig.add_trace(
                 go.Scatter(
-                    x=user_df['MappedFixationPointX'],
+                    x=user_df['NormalizedXFixationPointX'],
                     y=user_df['MappedFixationPointY'],
                     mode='lines',
                     line=dict(width=2, color=color_map[user]),
@@ -374,9 +374,9 @@ def update_scatter_plot_grey(selected_city, selected_user, slider_value_color):
             dict(
                 source=image_path_grey,
                 x=0,    # x-Position des Bildes in Pixel
-                sizex=1650,  # Breite des Bildes in Pixel
+                sizex=1960,  # Originalbreite
                 y=1200,    # y-Position des Bildes in Pixel
-                sizey=1200,  # Höhe des Bildes in Pixel
+                sizey=1200,  # None setzt die Originalhöhe
                 xref="x",
                 yref="y",
                 sizing="contain",  # Das Bild wird so skaliert, dass es komplett sichtbar ist, ohne gestreckt zu werden
@@ -425,7 +425,7 @@ def update_heatmap_color(selected_city):
             ].sort_values(by='FixationIndex')
 
         fig = px.density_contour(filtered_df,
-                                 x='MappedFixationPointX',
+                                 x='NormalizedXFixationPointX',
                                  y='MappedFixationPointY',
                                  nbinsx=20,
                                  nbinsy=20,
@@ -438,9 +438,9 @@ def update_heatmap_color(selected_city):
             dict(
                 source=image_path_color,
                 x=0,    # x-Position des Bildes in Pixel
-                sizex=1650,  # Breite des Bildes in Pixel
+                sizex=1960,  # None setzt die Originalbreite
                 y=1200,    # y-Position des Bildes in Pixel
-                sizey=1200,  # Höhe des Bildes in Pixel
+                sizey=1200,  # None setzt die Originalhöhe
                 xref="x",
                 yref="y",
                 sizing="contain",  # Das Bild wird so skaliert, dass es komplett sichtbar ist, ohne gestreckt zu werden
