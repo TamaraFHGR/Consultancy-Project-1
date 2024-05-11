@@ -47,7 +47,7 @@ app.layout = html.Div([
                 html.P('Choose a Type of Visualization:'),
                 dcc.RadioItems(
                     id='radio_visualization',
-                    options=[{'label': i, 'value': i} for i in ['Gaze-Plot', 'Heat Map']],
+                    options=[{'label': i, 'value': i} for i in ['Gaze-Plot', 'Heat-Map']],
                     value='Gaze-Plot')
             ]
         ),
@@ -67,9 +67,9 @@ app.layout = html.Div([
                         id='city_image_color',
                         style={'width': 'auto', 'height': 'auto'}),
                      dcc.Graph(
-                         id='gaze_plot'),
+                         id='gaze_plot_color'),
                      dcc.Graph(
-                         id='heat_map'),
+                         id='heat_map_color'),
                      html.P('Select a User'),
                      dcc.Dropdown(
                          id='dropdown_user_color',
@@ -88,13 +88,14 @@ app.layout = html.Div([
                  ]),
         html.Div(
             id='grey_plot_area',
-            children=[
-                # Zeile 2 - Grey-Plot-Area:
+            children=[                     # Spalte 2 / Container 2 (grey)
                 html.Img(
                     id='city_image_grey',
                     style={'width': 'auto', 'height': 'auto'}),
                 dcc.Graph(
-                    id='plot_grey_1'),
+                    id='gaze_plot_grey'),
+                dcc.Graph(
+                    id='heat_map_grey'),
                 html.P('Select a User'),
                 dcc.Dropdown(
                     id='dropdown_user_grey',
@@ -128,13 +129,17 @@ Section 3: Define Plot-Selection Area:
 def update_plot_area(visualization_type):
     if visualization_type == 'Gaze-Plot':
         return [
-            dcc.Graph(id='gaze_plot', style={'display': 'block'}),
-            dcc.Graph(id='heat_map', style={'display': 'none'})
+            dcc.Graph(id='gaze_plot_color', style={'display': 'block'}),
+            dcc.Graph(id='heat_map_color', style={'display': 'none'}),
+            dcc.Graph(id='gaze_plot_grey', style={'display': 'block'}),
+            dcc.Graph(id='heat_map_grey', style={'display': 'none'})
         ]
-    elif visualization_type == 'Heat Map':
+    elif visualization_type == 'Heat-Map':
         return [
-            dcc.Graph(id='gaze_plot', style={'display': 'none'}),
-            dcc.Graph(id='heat_map', style={'display': 'block'})
+            dcc.Graph(id='gaze_plot_color', style={'display': 'none'}),
+            dcc.Graph(id='heat_map_color', style={'display': 'block'}),
+            dcc.Graph(id='gaze_plot_grey', style={'display': 'none'}),
+            dcc.Graph(id='heat_map_grey', style={'display': 'block'})
         ]
 
 """
@@ -216,7 +221,7 @@ def get_image_path_color(selected_city):
         return 'http://127.0.0.1:8050/' + matching_files[0]
 
 @app.callback(
-    Output('gaze_plot', 'figure'),
+    Output('gaze_plot_color', 'figure'),
     [Input('dropdown_city', 'value')],
      #Input('dropdown_user_color', 'value'),
      #Input('range_slider_color', 'value')],
@@ -310,34 +315,20 @@ def get_image_path_grey(selected_city):
         return 'http://127.0.0.1:8050/' + matching_files[0]
 
 @app.callback(
-    Output('plot_grey_1', 'figure'),
-    [Input('dropdown_city', 'value'),
-     Input('dropdown_user_grey', 'value'),
-     Input('range_slider_grey', 'value')]
-)
-def update_scatter_plot_grey(selected_city, selected_user, slider_value_color):
+    Output('gaze_plot_grey', 'figure'),
+    [Input('dropdown_city', 'value')])
+
+def update_scatter_plot_grey(selected_city):
     if selected_city:
         # Define a color map for users
         unique_users = df['user'].dropna().unique()
-        colors = px.colors.qualitative.Plotly  # Use Plotly's qualitative color scale
-
-        # Create a dictionary to map each user to a specific color
+        colors = px.colors.qualitative.Plotly
         color_map = {user: colors[i % len(colors)] for i, user in enumerate(unique_users)}
-
-        # Check if a user is selected or the "All" option is chosen
-        if selected_user == 'All' or not selected_user:
-            user_filter = df['user'].notnull()  # If 'All' users or no user selected, include all non-null user entries
-        else:
-            user_filter = (df['user'] == selected_user)  # Specific user is selected
 
         # Filter and sort data based on the selected filters
         filtered_df = df[
             (df['CityMap'] == selected_city) &
-            (df['description'] == 'grey') &
-            user_filter &
-            (df['FixationDuration_aggregated'] >= slider_value_color[0]) &
-            (df['FixationDuration_aggregated'] <= slider_value_color[1])
-            ].sort_values(by='FixationIndex')
+            (df['description'] == 'grey')]
 
         # Create scatter plot using the color map
         fig = px.scatter(filtered_df,
@@ -397,12 +388,8 @@ def update_scatter_plot_grey(selected_city, selected_user, slider_value_color):
 Section 7: Define Density Heat-Map Color:
 """
 @app.callback(
-    Output('heat_map', 'figure'),
-    [Input('dropdown_city', 'value')],
-     #Input('dropdown_user_color', 'value'),
-     #Input('range_slider_color', 'value')],
-    prevent_initial_call=True
-)
+    Output('heat_map_color', 'figure'),
+    [Input('dropdown_city', 'value')])
 
 def update_heatmap_color(selected_city):
     if selected_city:
