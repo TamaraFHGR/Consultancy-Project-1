@@ -15,10 +15,17 @@ Data Import and Preparation
 # Data reading:
 data_path = 'assets/all_fixation_data_cleaned_up_3.csv'
 df = pd.read_csv(data_path, sep=';')
-# Task Duration in sec per User and Stimulus:
+
+# Add "Task Duration in sec" (per User and Stimulus) to df:
 task_duration = df.groupby(['user', 'CityMap', 'description'])['FixationDuration'].sum().reset_index()
 task_duration['FixationDuration'] = task_duration['FixationDuration'] / 1000
 df = pd.merge(df, task_duration, on=['user', 'CityMap', 'description'], suffixes=('', '_aggregated'))
+
+# Add "Average Fixation Duration in sec" (per User and Stimulus) to df:
+avg_fix_duration = df.groupby(['user', 'CityMap', 'description'])['FixationDuration'].mean().reset_index()
+avg_fix_duration['FixationDuration'] = avg_fix_duration['FixationDuration'] / 1000
+df = pd.merge(df, avg_fix_duration, on=['CityMap', 'description'], suffixes=('', '_avg'))
+
 #print(df)
 
 """
@@ -33,21 +40,22 @@ app.layout = html.Div([
             children=[
                 html.H1('Analysis of Eye-Tracking Data'),
                 html.H2('This dashboard enables the visual analysis of eye-tracking data,'
-                   ' based on metro maps of different European cities.')
+                   ' based on metro maps of different cities.')
             ]
         ),
         html.Div(
             id='selection-area',                # Spalte 1 / Container 2
             children=[
-                html.P('Please select a City-Map:'),
+                html.H3('To gain more insight on the analysis results of a specific city, please select a visualization type and a city map.'),
+                html.P('Please select a type of visualization:'),
+                dcc.RadioItems(
+                    id='radio_visualization',
+                    options=[{'label': i, 'value': i} for i in ['No Selection (landing page)', 'Gaze-Plot', 'Heat-Map']],
+                    value='No Selection (landing page)'),
+                html.P('Please select a city map:'),
                 dcc.Dropdown(
                     id='dropdown_city',
                     options=[{'label': city, 'value': city} for city in sorted(df['CityMap'].unique())],
-                    value=None),
-                html.P('Choose a Type of Visualization:'),
-                dcc.RadioItems(
-                    id='radio_visualization',
-                    options=[{'label': i, 'value': i} for i in ['Gaze-Plot', 'Heat-Map']],
                     value=None)
             ]
         ),
@@ -71,8 +79,7 @@ app.layout = html.Div([
                      dcc.Graph(
                          id='heat_map_color'),
                      dcc.Graph(
-                         id
-                     )
+                         id='box_task_duration'),
                      #html.P('Select a User'),
                      #dcc.Dropdown(
                      #    id='dropdown_user_color',
@@ -99,6 +106,8 @@ app.layout = html.Div([
                     id='gaze_plot_grey'),
                 dcc.Graph(
                     id='heat_map_grey'),
+                dcc.Graph(
+                    id='box_avg_fixation_duration'),
                 # html.P('Select a User'),
                 # dcc.Dropdown(
                 #     id='dropdown_user_grey',
@@ -120,7 +129,8 @@ app.layout = html.Div([
 
 """
 -----------------------------------------------------------------------------------------
-Section 3: Define Plot-Selection Area:
+Section 3:
+Define Plot-Selection Area
 """
 
 @app.callback(
@@ -132,15 +142,19 @@ Section 3: Define Plot-Selection Area:
 def update_plot_area(visualization_type):
     if visualization_type == 'Gaze-Plot':
         return [
-            dcc.Graph(id='gaze_plot_color'),
-            dcc.Graph(id='gaze_plot_grey')
+             dcc.Graph(id='gaze_plot_color'),
+             dcc.Graph(id='gaze_plot_grey')
         ]
     elif visualization_type == 'Heat-Map':
         return [
-            dcc.Graph(id='heat_map_color'),
-            dcc.Graph(id='heat_map_grey')
+             dcc.Graph(id='heat_map_color'),
+             dcc.Graph(id='heat_map_grey')
         ]
-
+    elif visualization_type == 'No Selection (landing page)':
+         return [
+             dcc.Graph(id='box_task_duration'),
+             dcc.Graph(id='box_avg_fixation_duration')
+        ]
 """
 -----------------------------------------------------------------------------------------
 Section 4:
@@ -173,7 +187,6 @@ def update_table_container(selected_city):
         avg_fixation_duration_color = filtered_df[filtered_df['description'] == 'color']['FixationDuration'].mean() / 1000
         avg_fixation_duration_grey = filtered_df[filtered_df['description'] == 'grey']['FixationDuration'].mean() / 1000
 
-
         table = dash_table.DataTable(
             columns=[
                 {"name": "KPI", "id": "KPI"},
@@ -186,44 +199,23 @@ def update_table_container(selected_city):
                 {"KPI": "Average Saccade Length", "color": round(avg_saccade_color,2), "greyscale": round(avg_saccade_grey,2)},
                 {"KPI": "Average Fixation Duration", "color": f"{round(avg_fixation_duration_color,2)} sec", "greyscale": f"{round(avg_fixation_duration_grey,2)} sec"}
             ],
-            style_cell={
-                'textAlign': 'left',
-                'minWidth': '0px',
-                'maxWidth': '180px'
-                },  # Left-align text in cells
-            style_header={
-            'backgroundColor': '#000000',  # Set header background color
-            'color': '#FFFFFF'  # Set header text color to white
-                },
-            style_data_conditional=[{
-                'if': {'row_index': 0},  # Style the second row
-                    'backgroundColor': '#E6E6E6',  # Set background color
-                    'color': '#000000'  # Set text color
-                },
-                {
-                'if': {'row_index': 1},  # Style the third row
-                    'backgroundColor': '#CBCBCB',  # Set background color
-                    'color': '#000000'  # Set text color
-                },
-                {
-                'if': {'row_index': 2},  # Style the fourth row
-                    'backgroundColor': '#E6E6E6',  # Set background color
-                    'color': '#000000'  # Set text color
-                },
-                {
-                    'if': {'row_index': 3},  # Style the fourth row
-                    'backgroundColor': '#CBCBCB',  # Set background color
-                    'color': '#000000'  # Set text color
-                }
-            ]
+            style_cell={'className': 'cell-style'},
+            style_header={'className': 'header-style'},
+            style_data_conditional=[
+                {'if': {'row_index': 'even'},
+                 'className': 'data-row-even'},
+                {'if': {'row_index': 'odd'},
+                 'className': 'data-row-odd'}]
         )
+
         return table
     else:
-        return "Please select a city to view data"
+        return "Please select a city map to view related KPI data"
 
 """
 -----------------------------------------------------------------------------------------
-Section 5: Define Scatter-Plot Color:
+Section 5:
+Define Scatter-Plot Color
 """
 def get_image_path_color(selected_city):
     file_pattern_color = f'assets/*_{selected_city}_Color.jpg'
@@ -298,7 +290,8 @@ def update_scatter_plot_color(selected_city):
 
 """
 -----------------------------------------------------------------------------------------
-Section 6: Define Scatter-Plot Grey:
+Section 6:
+Define Scatter-Plot Grey
 """
 def get_image_path_grey(selected_city):
     file_pattern_grey = f'assets/*_{selected_city}_Grey.jpg'
@@ -377,7 +370,8 @@ def update_scatter_plot_grey(selected_city):
 
 """
 -----------------------------------------------------------------------------------------
-Section 7: Define Density Heat-Map Color:
+Section 7:
+Define Density Heat-Map Color
 """
 @app.callback(
     Output('heat_map_color', 'figure'),
@@ -470,6 +464,81 @@ def update_heatmap_grey(selected_city):
     else:
         return px.scatter(title='Please select a city to view data')
 
+
+"""
+-----------------------------------------------------------------------------------------
+Section 9:
+Define Box-Plot "Task Duration" (Distribution of Task Duration (A-B) per User, Color, City)
+"""
+
+@app.callback(
+    Output('box_task_duration', 'figure'),
+    [Input('radio_visualization', 'value')])
+def update_box_plot_task_duration(visualization_type):
+    if visualization_type == 'No Selection (landing page)':
+        city_order = df['City'].sort_values().unique().tolist()
+        fig = px.box(df,
+                     x='FixationDuration_aggregated',
+                     y='City',
+                     #points='outliers',
+                     color='description',
+                     boxmode='overlay',
+                     category_orders={'City': city_order},
+                     title='Distribution of Task Duration per City',
+                     color_discrete_map = {
+                         'color': 'skyblue',
+                         'grey': 'lightgrey'},
+                     labels = {'FixationDuration_aggregated': 'Task Duration [sec.]',
+                               'City': '',
+                               'description': 'Map Type'})
+
+        fig.update_traces(marker=dict(size=5), line=dict(width=1.0))
+
+        fig.update_yaxes(dtick=1,)
+
+        fig.update_layout(
+            plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
+            paper_bgcolor='rgba(0, 0, 0, 0)')  # Set paper color to transparent
+
+        return fig
+
+"""
+-----------------------------------------------------------------------------------------
+Section 10:
+Define Box-Plot "Average Fixation Duration" (Distribution of Average Fixation Duration per User, Color, City)
+"""
+
+@app.callback(
+    Output('box_avg_fixation_duration', 'figure'),
+    [Input('radio_visualization', 'value')])
+def update_box_plot_avg_fixation_duration(visualization_type):
+    if visualization_type == 'No Selection (landing page)':
+        city_order = df['City'].sort_values().unique().tolist()
+
+        fig = px.box(df,
+                      x='FixationDuration_avg',
+                      y='City',
+                      #points='outliers',
+                      color='description',
+                      boxmode='overlay',
+                      category_orders={'City': city_order},
+                      title='Distribution of Average Fixation Duration per City',
+                      color_discrete_map={
+                          'color': 'skyblue',
+                          'grey': 'lightgrey'},
+                      labels={'FixationDuration_avg': 'Average Fixation Duration [sec.]',
+                              'City': '',
+                              'description': 'Map Type'})
+
+        fig.update_traces(marker=dict(size=5), line=dict(width=1.0))
+
+        fig.update_yaxes(dtick=1,)
+
+        fig.update_layout(
+            plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
+            paper_bgcolor='rgba(0, 0, 0, 0)')  # Set paper color to transparent
+
+        return fig
 
 if __name__ == '__main__':
     app.run_server(debug=True)

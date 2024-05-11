@@ -1,75 +1,118 @@
 /* custom.css */
 
-/* Globale Anpassungen für die gesamte Seite */
 body {
     font-family: Arial, sans-serif;
-    background-color: #A7B9B9;
-    margin: 0;  /* Entfernt den Standardabstand von 8px um den Körper */
-    padding: 0;  /* Entfernt den Standardabstand von 8px um den Körper */
+    background-color: #D9E6E5;
+    margin: 8px;  /* Entfernt den Standardabstand von 8px um den Körper */
+    padding: 8px;  /* Entfernt den Standardabstand von 8px um den Körper */
 }
 
-/* Anpassungen für den Header h1 */
+#header-area {
+    margin-bottom: 25px; /* Adjust this value to increase or decrease the space */
+}
+
 h1 {
-    color: #2F4C4C;
-    font-size: 28px;
+    color: #000000;
+    font-size: 22px;
     font-weight: bold;
-    text-align: center;
+    text-align: left;
+    margin-bottom: 12px;
 }
 
-/* Anpassungen für den Header h2 */
 h2 {
-    color: #2F4C4C;
-    font-size: 24px;
-    font-weight: bold;
-    text-align: center;
-}
-
-/* Anpassungen für Text-Teil p */
-p {
-    color: white;
-    font-size: 20px;
+    color: #495352;
+    font-size: 16px;
     font-weight: normal;
     text-align: left;
+    margin-bottom: 12px;
 }
 
-/* Anpassungen für Drop-Down Menu */
-#dropdown-area {
+h3 {
+    color: #FFFFFF;
+    font-size: 16px;
+    font-weight: normal;
+    text-align: left;
+    margin-bottom: 12px;
+}
+
+p {
+    color: #00D08C;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: left;
+    margin-top: 25px;
+    margin-bottom: 5px;
+}
+
+#selection-area {
     background-color: #2F4C4C;
-    color: #2F4C4C;
+    color: #FFFFFF;
     padding: 20px;
     border-radius: 5px;
     margin: 10px;
 }
 
-.dropdown button {
-    background-color: #007bff;
-    color: white;
+#kpi-area {
+    margin-top : 50px;
+}
+
+#dropdown_city {
+    background-color: #619785;
+    color: #000000;
     padding: 8px;
     border: none;
     border-radius: 5px;
     cursor: pointer;
 }
 
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-right: -15px;
+    margin-left: -15px;
+}
+/* Grundlegende Spaltendefinition */
+[class*="columns"] {
+    padding-right: 15px;
+    padding-left: 15px;
+    flex: 1 0 0%;
+}
 
+/* Spezifische Anpassungen für sechs Spalten */
+.six.columns {
+    flex: 0 0 50%;
+    max-width: 50%;
+}
 
+/* Optionale responsive Anpassungen */
+@media (max-width: 768px) {
+    .six.columns {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
 
-/*
-
- Spezifische Anpassungen für die Tabelle
-
-.dash-table {
-    border-collapse: collapse;
+/* KPI-Tabellen Layout */
+table {
     width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
 }
-
-.dash-table th, .dash-table td {
-    border: 1px solid #ddd;
-    padding: 8px;
+.cell-style {
     text-align: left;
+    min-width: 0px;
+    max-width: 180px;
+}
+.header-style {
+    'backgroundColor': '#000000';
+    'color': '#FFFFFF';
+}
+.data-row-even {
+    background-color: #E6E6E6;
+    color: #000000;
+}
+.data-row-odd {
+    background-color: #CBCBCB;
+    color: #000000;
 }
 
-.dash-table th {
-    background-color: #4CAF50;
-    color: white;
-}
-*/
