@@ -31,6 +31,7 @@ df = pd.merge(df, avg_fix_duration, on=['user', 'CityMap', 'description'], suffi
 #print(df['FixationDuration_aggregated'])
 #print(df['FixationDuration_aggregated'].min)
 #print(df['FixationDuration_aggregated'].max)
+#print(df)
 
 """
 -----------------------------------------------------------------------------------------
@@ -130,7 +131,7 @@ app.layout = html.Div([
                 #                 max=20,
                 #                 step=0.1,
                 #                 value=[1, 20]),
-                dcc.Graph(id='box_task_grey'),
+                dcc.Graph(id='box_avg_fix_duration'),
             ],  id='grey_plot_area', className='sixth_container'),
         ], className='third_column'),
     ], className='dash_container'),
@@ -210,11 +211,11 @@ def update_plot_area(visualization_type):
         return [
             dcc.Graph(id='box_task_duration')
         ], [
-            dcc.Graph(id='box_avg_fixation_duration')
+            dcc.Graph(id='box_avg_fix_duration')
         ]
     else:
-        return ([html.P("No visualization selected", style={'textAlign': 'center', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'fontSize': '16px', 'margin-top': '10px'})],
-                [html.P("No visualization selected", style={'textAlign': 'center', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'fontSize': '16px', 'margin-top': '10px'})])
+        return ([html.P("No visualization type selected", style={'textAlign': 'center', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'fontSize': '16px', 'margin-top': '10px'})],
+                [html.P("No visualization type selected", style={'textAlign': 'center', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'fontSize': '16px', 'margin-top': '10px'})])
 
 #3 - Update Filters in plot area, based on selected city:
 @app.callback(
@@ -807,6 +808,197 @@ def update_heatmap_grey(selected_city, selected_user, current_theme):
         fig.update_yaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
 
         return fig
+
+"""
+-----------------------------------------------------------------------------------------
+Section 10:
+Definition of Box-Plot "Task Duration" (Distribution of Task Duration (A-B) per User, Color, City)
+"""
+@app.callback(
+    Output('box_task_duration', 'figure'),
+    [Input('active-button', 'data'),
+     Input('city_dropdown', 'value'),
+     Input('current_theme', 'data')]
+)
+def update_box_plot_task_duration(active_button, selected_city, current_theme):
+    if active_button == 'default_viz' and selected_city is None:
+        city_order = df['CityMap'].sort_values().unique().tolist()
+
+        # Set title color based on theme
+        title_color = 'black' if current_theme == 'light' else 'white'
+
+        fig = px.box(df,
+                     x='FixationDuration_aggregated',
+                     y='City',
+                     # points='outliers',
+                     color='description',
+                     boxmode='overlay',
+                     category_orders={'City': city_order},
+                     color_discrete_map={
+                         'color': 'blue',
+                         'grey': 'lightgrey'},
+                     labels={'FixationDuration_aggregated': 'Task Duration [sec.]',
+                             'City': '',
+                             'description': 'Map Type'})
+
+        fig.update_traces(marker=dict(size=5), line=dict(width=2.0))
+
+        fig.update_xaxes(showgrid=False,
+                         showticklabels=True,
+                         tickfont=dict(color=title_color, size=11, family='Arial, sans-serif'),
+                         domain=[0, 1])
+
+        fig.update_yaxes(dtick=1,
+                         showgrid=False,
+                         showticklabels=True,
+                         tickfont=dict(color=title_color, size=11, family='Arial, sans-serif'),
+                         domain=[0, 1])
+
+        fig.update_layout(
+            plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
+            paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
+            yaxis_title=None,
+            xaxis_title={
+                'text': 'Task Duration [sec.]',
+                'font': {
+                    'size': 11,
+                    'family': 'Arial, sans-serif',
+                    'color': title_color}
+            },
+            title={
+                'text': f'<b>Distribution of Task-Duration in sec.</b>',
+                'font': {
+                    'size': 12,
+                    'family': 'Arial, sans-serif',
+                    'color': title_color}
+            },
+            margin=dict(l=5, r=5, t=40, b=5),
+            showlegend=False)
+
+        return fig
+
+    else:
+        fig = px.scatter()
+
+        title_color = 'black' if current_theme == 'light' else 'white'
+
+        fig.update_layout(
+        plot_bgcolor='rgba(0, 0, 0, 0)',
+        paper_bgcolor='rgba(0, 0, 0, 0)',
+        title={
+            'text': "<i>Please remove city selection to view overall Boxplot data.<i>.",
+            'y': 0.6,
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top',
+            'font': {
+                'size': 16,
+                'color': title_color,
+                'family': 'Arial, sans-serif'
+            }},
+        showlegend=False,
+        margin=dict(l=0, r=5, t=40, b=5))
+
+        fig.update_xaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
+        fig.update_yaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
+
+    return fig
+
+"""
+-----------------------------------------------------------------------------------------
+Section 11:
+Definition of Box-Plot "Average Fixation Duration" (Distribution of Avg. Fixation Duration per User, Color, City)
+"""
+@app.callback(
+    Output('box_avg_fix_duration', 'figure'),
+    [Input('active-button', 'data'),
+     Input('city_dropdown', 'value'),
+     Input('current_theme', 'data')]
+)
+def update_box_plot_avg_fix_duration(active_button, selected_city, current_theme):
+    if active_button == 'default_viz' and selected_city is None:
+        city_order = df['CityMap'].sort_values().unique().tolist()
+
+        # Set title color based on theme
+        title_color = 'black' if current_theme == 'light' else 'white'
+
+        fig = px.box(df,
+                     x='FixationDuration_avg',
+                     y='City',
+                     # points='outliers',
+                     color='description',
+                     boxmode='overlay',
+                     category_orders={'City': city_order},
+                     color_discrete_map={
+                         'color': 'blue',
+                         'grey': 'lightgrey'},
+                     labels={'FixationDuration_aggregated': 'Average Fixation Duration [sec.]',
+                             'City': '',
+                             'description': 'Map Type'})
+
+        fig.update_traces(marker=dict(size=5), line=dict(width=2.0))
+
+        fig.update_xaxes(showgrid=False,
+                         showticklabels=True,
+                         tickfont=dict(color=title_color, size=11, family='Arial, sans-serif'),
+                         domain=[0, 1])
+
+        fig.update_yaxes(dtick=1,
+                         showgrid=False,
+                         showticklabels=True,
+                         tickfont=dict(color=title_color, size=11, family='Arial, sans-serif'),
+                         domain=[0, 1])
+
+        fig.update_layout(
+            plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
+            paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
+            yaxis_title=None,
+            xaxis_title={
+                'text': 'Average Fiation Duration [sec.]',
+                'font': {
+                    'size': 11,
+                    'family': 'Arial, sans-serif',
+                    'color': title_color}
+            },
+            title={
+                'text': f'<b>Distribution of average Fixation Duration in sec.</b>',
+                'font': {
+                    'size': 12,
+                    'family': 'Arial, sans-serif',
+                    'color': title_color}
+            },
+            margin=dict(l=5, r=5, t=40, b=5),
+            showlegend=False)
+
+        return fig
+
+    else:
+        fig = px.scatter()
+
+        title_color = 'black' if current_theme == 'light' else 'white'
+
+        fig.update_layout(
+        plot_bgcolor='rgba(0, 0, 0, 0)',
+        paper_bgcolor='rgba(0, 0, 0, 0)',
+        title={
+            'text': "<i>Please remove city selection to view overall Boxplot data.<i>.",
+            'y': 0.6,
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top',
+            'font': {
+                'size': 16,
+                'color': title_color,
+                'family': 'Arial, sans-serif'
+            }},
+        showlegend=False,
+        margin=dict(l=0, r=5, t=40, b=5))
+
+        fig.update_xaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
+        fig.update_yaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
+
+    return fig
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
