@@ -1,118 +1,203 @@
-/* custom.css */
-
-body {
-    font-family: Arial, sans-serif;
-    background-color: #D9E6E5;
-    margin: 8px;  /* Entfernt den Standardabstand von 8px um den Körper */
-    padding: 8px;  /* Entfernt den Standardabstand von 8px um den Körper */
+/* 1st Container - Header and Theme-Mode */
+.first_container {
+    display: grid;
+    grid-template-columns: 80% 20%;
+    align-items: center;
+    border: 1px solid darkgrey;
+    border-radius: 5px;
+    padding: 10px; /* Innenabstand zum Rand */
+    gap: 2px; /* Abstand zwischen den Spalten */
+    margin: 3px;
+    box-sizing: border-box;
 }
-
-#header-area {
-    margin-bottom: 25px; /* Adjust this value to increase or decrease the space */
+/* Dropdown für Theme-Mode */
+.theme_dropdown {
+    justify-self: right;
+    width: auto;
+    font-size: 14px;
 }
-
+/* ------------------- */
+/* Split Layout in three columns */
+.dash_container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    gap: 1px;
+    box-sizing: border-box;
+}
+/* Erste Spalte */
+.first_column {
+    flex: 0 0 25%;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+/* Zweite Spalte */
+.second_column {
+    flex: 0 0 37.5%;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+/* Dritte Spalte */
+.third_column {
+    flex: 0 0 37.5%;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+/* ------------------- */
+/* 2nd Container - Input City */
+.second_container {
+    display: block;
+    align-items: center;
+    border: 1px solid darkgrey;
+    border-radius: 5px;
+    padding: 10px;
+    gap: 2px;
+    margin-left: 3px;
+    margin-right: 3px;
+    margin-top: 5px;
+    box-sizing: border-box;
+}
+.dropdown {
+    width: 100%;
+    font-size: 14px;
+    cursor: pointer;
+}
+/* ------------------- */
+/* 3rd Container - Input Visualization Type */
+.third_container {
+    display: block;
+    align-items: center;
+    border: 1px solid darkgrey;
+    border-radius: 5px;
+    padding: 10px;
+    gap: 2px;
+    margin-left: 3px;
+    margin-right: 3px;
+    margin-top: 5px;
+    box-sizing: border-box;
+}
+.button_viz_type {
+    display: flex;
+    gap: 2px;
+    justify-content: left;
+    border-radius: 5px;
+}
+.viz_button {
+    padding: 5px 5px;
+    width: 100px;
+    font-size: 13px;
+    border: 1px solid darkgrey;
+    border-radius: 5px;
+    margin: 5px;
+}
+.viz_button:hover {
+    background-color: #e0e0e0;
+    cursor: pointer;
+}
+.viz_button.active {
+    background-color: blue;
+    color: white;
+    border: 1px solid blue;
+}
+/* ------------------- */
+/* 4th Container - KPI-Table */
+.fourth_container {
+    display: block;
+    align-items: center;
+    border: 1px solid darkgrey;
+    border-radius: 5px;
+    padding: 10px;
+    gap: 2px;
+    margin-left: 3px;
+    margin-right: 3px;
+    margin-top: 5px;
+    padding-bottom:90px;
+    box-sizing: border-box;
+}
+/* ------------------- */
+/* 5th Container - Color Map */
+.fifth_container {
+    align-items: center;
+    border: 1px solid darkgrey;
+    border-radius: 5px;
+    margin-left: 3px;
+    margin-right: 3px;
+    margin-top: 5px;
+    box-sizing: border-box;
+}
+/* ------------------- */
+/* 6th Container - Grey Map */
+.sixth_container {
+    align-items: center;
+    border: 1px solid darkgrey;
+    border-radius: 5px;
+    margin-left: 3px;
+    margin-right: 3px;
+    margin-top: 5px;
+    box-sizing: border-box;
+}
+/* ------------------- */
+/* Theme-Mode */
+.light_theme {
+    background-color: white;
+    color: black;
+}
+.dark_theme {
+    background-color: #454a59;
+    color: white;
+}
+html, body {
+    background-color: inherit;
+    color: inherit;
+}
+.header, .first_container, .second_container, .third_container, .fourth_container,
+.fifth_container, .sixth_container, .dash_container {
+    background-color: inherit;
+    color: inherit;
+}
+/* Dropdown für Theme-Mode */
+/* Überschreiben der Standardklasse von Dash */
+.light_theme .dash-dropdown,
+.light_theme .dash-dropdown .Select-control,
+.light_theme .dash-dropdown .Select-menu-outer {
+    background-color: white !important;
+    color: black !important;
+}
+.dark_theme .dash-dropdown,
+.dark_theme .dash-dropdown .Select-control,
+.dark_theme .dash-dropdown .Select-menu-outer {
+    background-color: #485260 !important;
+    color: white !important;
+}
+/* Schriftfarbe für den ausgewählten Wert im Light Theme */
+.light_theme .dash-dropdown .Select-value-label {
+    color: black !important;
+}
+/* Schriftfarbe für den ausgewählten Wert im Dark Theme */
+.dark_theme .dash-dropdown .Select-value-label {
+    color: white !important;
+}
+/* ------------------- */
+/* Font Style */
 h1 {
-    color: #000000;
     font-size: 22px;
     font-weight: bold;
     text-align: left;
-    margin-bottom: 12px;
+    /* margin-bottom: 12px; */
 }
-
 h2 {
-    color: #495352;
     font-size: 16px;
     font-weight: normal;
     text-align: left;
-    margin-bottom: 12px;
+    /* margin-bottom: 12px; */
 }
-
 h3 {
-    color: #FFFFFF;
-    font-size: 16px;
-    font-weight: normal;
-    text-align: left;
-    margin-bottom: 12px;
-}
-
-p {
-    color: #00D08C;
-    font-size: 16px;
+    font-size: 12px;
     font-weight: bold;
     text-align: left;
-    margin-top: 25px;
-    margin-bottom: 5px;
-}
-
-#selection-area {
-    background-color: #2F4C4C;
-    color: #FFFFFF;
-    padding: 20px;
-    border-radius: 5px;
-    margin: 10px;
-}
-
-#kpi-area {
-    margin-top : 50px;
-}
-
-#dropdown_city {
-    background-color: #619785;
-    color: #000000;
-    padding: 8px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.row {
-    display: flex;
-    flex-wrap: wrap;
-    margin-right: -15px;
-    margin-left: -15px;
-}
-/* Grundlegende Spaltendefinition */
-[class*="columns"] {
-    padding-right: 15px;
-    padding-left: 15px;
-    flex: 1 0 0%;
-}
-
-/* Spezifische Anpassungen für sechs Spalten */
-.six.columns {
-    flex: 0 0 50%;
-    max-width: 50%;
-}
-
-/* Optionale responsive Anpassungen */
-@media (max-width: 768px) {
-    .six.columns {
-        flex: 0 0 100%;
-        max-width: 100%;
-    }
-}
-
-/* KPI-Tabellen Layout */
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 20px;
-}
-.cell-style {
-    text-align: left;
-    min-width: 0px;
-    max-width: 180px;
-}
-.header-style {
-    'backgroundColor': '#000000';
-    'color': '#FFFFFF';
-}
-.data-row-even {
-    background-color: #E6E6E6;
-    color: #000000;
-}
-.data-row-odd {
-    background-color: #CBCBCB;
-    color: #000000;
+    /* margin-bottom: 12px; */
 }
 

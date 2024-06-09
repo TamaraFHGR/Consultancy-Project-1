@@ -1,4 +1,5 @@
-from dash import Dash, dash_table, dcc, html, Input, Output
+from dash import Dash, dash_table, dcc, html, Input, Output, State, callback_context
+from dash_iconify import DashIconify
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.express as px
@@ -24,9 +25,12 @@ df = pd.merge(df, task_duration, on=['user', 'CityMap', 'description'], suffixes
 # Add "Average Fixation Duration in sec" (per User and Stimulus) to df:
 avg_fix_duration = df.groupby(['user', 'CityMap', 'description'])['FixationDuration'].mean().reset_index()
 avg_fix_duration['FixationDuration'] = avg_fix_duration['FixationDuration'] / 1000
-df = pd.merge(df, avg_fix_duration, on=['CityMap', 'description'], suffixes=('', '_avg'))
+df = pd.merge(df, avg_fix_duration, on=['user', 'CityMap', 'description'], suffixes=('', '_avg'))
 
-#print(df)
+#print('task_duration:')
+#print(df['FixationDuration_aggregated'])
+#print(df['FixationDuration_aggregated'].min)
+#print(df['FixationDuration_aggregated'].max)
 
 """
 -----------------------------------------------------------------------------------------
@@ -34,135 +38,240 @@ Section 2:
 Definition of Dash Layout
 """
 app.layout = html.Div([
-    html.Div([                          # Spalte 1
-        html.Div(
-            id='header-area',                   # Spalte 1 / Container 1
-            children=[
-                html.H1('Analysis of Eye-Tracking Data'),
-                html.H2('This dashboard enables the visual analysis of eye-tracking data,'
-                   ' based on metro maps of different cities.')
-            ]
+    # Header and Theme-Mode:
+    html.Div([
+        html.Div([
+            html.H1('Analysis of Eye-Tracking-Data'),],
+            #html.H2('This dasboard enables the visual exploration based on different city maps'), ],
+            className='header'),
+        dcc.Dropdown(
+            id='theme_dropdown',
+            options=[
+                {'label': 'Light Mode', 'value': 'light'},
+                {'label': 'Dark Mode', 'value': 'dark'}],
+            value='light',
+            clearable=False,
+            className='theme_dropdown',
         ),
-        html.Div(
-            id='selection-area',                # Spalte 1 / Container 2
-            children=[
-                html.H3('To gain more insight on the analysis results of a specific city, please select a visualization type and a city map.'),
-                html.P('Please select a type of visualization:'),
-                dcc.RadioItems(
-                    id='radio_visualization',
-                    options=[{'label': i, 'value': i} for i in ['No Selection (landing page)', 'Gaze-Plot', 'Heat-Map']],
-                    value='No Selection (landing page)'),
-                html.P('Please select a city map:'),
-                dcc.Dropdown(
-                    id='dropdown_city',
-                    options=[{'label': city, 'value': city} for city in sorted(df['CityMap'].unique())],
-                    value=None)
-            ]
-        ),
-        html.Div(
-            id='kpi-area',                      # Spalte 1 / Container 3
-            children=[
-                html.P('Statistical Key Performance Indicators:'),
-                dcc.Tab(
-                    id='table_container'
-                )]
-            )
-    ], className='six columns'),
-    html.Div([                          # Spalte 2
-        html.Div(id='color_plot_area',
-                 children=[                     # Spalte 2 / Container 1 (color)
-                     html.Img(
-                        id='city_image_color',
-                        style={'width': 'auto', 'height': 'auto'}),
-                     dcc.Graph(
-                         id='gaze_plot_color'),
-                     dcc.Graph(
-                         id='heat_map_color'),
-                     dcc.Graph(
-                         id='box_task_duration'),
-                     #html.P('Select a User'),
-                     #dcc.Dropdown(
-                     #    id='dropdown_user_color',
-                     #    options=[{'label': user, 'value': user} for user in
-                     #             sorted(df[df['description'] == 'color']['user'].unique())],
-                     #    value=None),
-                     #html.P('Select a range of Task Duration'),
-                     # dcc.RangeSlider(
-                     #      id='range_slider_color',
-                     #      min=1,
-                     #      max=50,
-                     #      step=None,
-                     #      value=[
-                     #          df[df['description'] == 'color']['FixationDuration_aggregated'].min(),
-                     #          df[df['description'] == 'color']['FixationDuration_aggregated'].max()]),
-                 ]),
-        html.Div(
-            id='grey_plot_area',
-            children=[                     # Spalte 2 / Container 2 (grey)
+        dcc.Store(id='current_theme', data='light'),
+    ], className='first_container'),
+
+    html.Div([
+        # Start first column (Input and KPI):
+        html.Div([
+            # Input-Containers:
+            html.Div([
+                # City Dropdown:
+                html.Div([
+                    html.H3([
+                        DashIconify(icon="vaadin:train", width=16, height=16, style={"margin-right": "12px"}),
+                        'Please select a City:']),
+                    dcc.Dropdown(
+                        id='city_dropdown',
+                        options=[{'label': city, 'value': city} for city in sorted(df['CityMap'].unique())],
+                        value=None,
+                        clearable=True,
+                        className='dropdown'),
+                ], className='second_container'),
+                # Visualization Type Buttons:
+                html.Div([
+                    html.H3([
+                        DashIconify(icon="ion:bar-chart", width=16, height=16, style={"margin-right": "12px"}),
+                        'Please choose a Type of Visualization:']),
+                    html.Div([
+                        html.Button('Boxplot', id='default_viz', n_clicks=0, className='viz_button'),
+                        html.Button('Heat Map', id='heat_map', n_clicks=0, className='viz_button'),
+                        html.Button('Gaze Plot', id='gaze_plot', n_clicks=0, className='viz_button'),
+                    ], id='button_viz_type', className='button_viz_type'),
+                    dcc.Store(id='active-button', data='Boxplot'),
+                    html.Div(id='output-section')
+                ], className='third_container'),
+            ], className='input_container'),
+
+            # Output-Container KPI-Table:
+            html.Div([
+                html.H3([
+                    DashIconify(icon="fluent:arrow-trending-lines-24-filled", width=16, height=16,
+                                style={"margin-right": "12px"}),
+                    'Statistical Key Performance Indicators:']),
+                html.Div(id='table_container')
+            ], className='fourth_container'),
+        ], className='first_column'),
+
+        # Start second column (Color Map):
+        html.Div([
+            # Output-Container Color Plot:
+            html.Div([
                 html.Img(
-                    id='city_image_grey',
-                    style={'width': 'auto', 'height': 'auto'}),
-                dcc.Graph(
-                    id='gaze_plot_grey'),
-                dcc.Graph(
-                    id='heat_map_grey'),
-                dcc.Graph(
-                    id='box_avg_fixation_duration'),
-                # html.P('Select a User'),
-                # dcc.Dropdown(
-                #     id='dropdown_user_grey',
-                #     options=[{'label': user, 'value': user} for user in
-                #              sorted(df[df['description'] == 'grey']['user'].unique())],
-                # ),
-                # html.P('Select a range of Task Duration'),
-                # dcc.RangeSlider(
-                #     id='range_slider_grey',
-                #     min=1,
-                #     max=50,
-                #     step=None,
-                #     value=[
-                #         df[df['description'] == 'grey']['FixationDuration_aggregated'].min(),
-                #         df[df['description'] == 'grey']['FixationDuration_aggregated'].max()],)
-            ])
-    ], className='six columns')
-], className='row')
+                    id='city_image_color'),
+                dcc.Graph(id='gaze_plot_color'),
+                dcc.Graph(id='heat_map_color'),
+                dcc.Dropdown(id='dropdown_user_color'),
+                # dcc.RangeSlider(id='range_slider_color',
+                #                 min=1,
+                #                 max=20,
+                #                 step=0.1,
+                #                 value=[1, 20]),
+                dcc.Graph(id='box_task_duration')
+            ], id='color_plot_area', className='fifth_container'),
+        ], className='second_column'),
+
+        # Start third column (Grey Map):
+        html.Div([
+            # Output-Container Grey Plot:
+            html.Div([
+                html.Img(
+                    id='city_image_grey'),
+                dcc.Graph(id='gaze_plot_grey'),
+                dcc.Graph(id='heat_map_grey'),
+                dcc.Dropdown(id='dropdown_user_grey'),
+                # dcc.RangeSlider(id='range_slider_grey',
+                #                 min=1,
+                #                 max=20,
+                #                 step=0.1,
+                #                 value=[1, 20]),
+                dcc.Graph(id='box_task_grey'),
+            ],  id='grey_plot_area', className='sixth_container'),
+        ], className='third_column'),
+    ], className='dash_container'),
+], id='page_content', className='light_theme')
 
 """
 -----------------------------------------------------------------------------------------
 Section 3:
-Define Plot-Selection Area
+Definition of active Viz-Button and Output-Section (based on active Viz-Type)
 """
+
+#1 - Define and keep active button:
+@app.callback(
+    [Output('default_viz', 'className'),
+     Output('heat_map', 'className'),
+     Output('gaze_plot', 'className'),
+     Output('active-button', 'data')],
+    [Input('default_viz', 'n_clicks'),
+     Input('heat_map', 'n_clicks'),
+     Input('gaze_plot', 'n_clicks')],
+    [State('active-button', 'data')]
+)
+
+def update_active_button(btn1, btn2, btn3, active_btn):
+    ctx = callback_context
+    if not ctx.triggered:
+        return ['viz_button active' if active_btn == 'default_viz' else 'viz_button',
+                'viz_button active' if active_btn == 'heat_map' else 'viz_button',
+                'viz_button active' if active_btn == 'gaze_plot' else 'viz_button',
+                active_btn]
+    else:
+        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        return ['viz_button active' if button_id == 'default_viz' else 'viz_button',
+                'viz_button active' if button_id == 'heat_map' else 'viz_button',
+                'viz_button active' if button_id == 'gaze_plot' else 'viz_button',
+                button_id]
+
+#2 - Update output and plot area based on active button:
+@app.callback(
+    Output('output-section', 'children'),
+    Input('active-button', 'data')
+)
+def update_output(active_button):
+    if active_button == 'default_viz':
+        return ''
+    elif active_button == 'heat_map':
+        return ''
+    elif active_button == 'gaze_plot':
+        return ''
+    else:
+        return ''
 
 @app.callback(
     [Output('color_plot_area', 'children'),
      (Output('grey_plot_area', 'children'))],
-    [Input('radio_visualization', 'value')]
+    [Input('active-button', 'data')]
 )
 
 def update_plot_area(visualization_type):
-    if visualization_type == 'Gaze-Plot':
+    if visualization_type == 'gaze_plot':
         return [
-             dcc.Graph(id='gaze_plot_color'),
-             dcc.Graph(id='gaze_plot_grey')
+            dcc.Graph(id='gaze_plot_color'),
+            dcc.Dropdown(id='dropdown_user_color', value=None)
+        ], [
+            dcc.Graph(id='gaze_plot_grey'),
+            dcc.Dropdown(id='dropdown_user_grey', value=None)
         ]
-    elif visualization_type == 'Heat-Map':
+    elif visualization_type == 'heat_map':
         return [
-             dcc.Graph(id='heat_map_color'),
-             dcc.Graph(id='heat_map_grey')
+            dcc.Graph(id='heat_map_color'),
+            dcc.Dropdown(id='dropdown_user_color', value=None)
+        ], [
+            dcc.Graph(id='heat_map_grey'),
+            dcc.Dropdown(id='dropdown_user_grey', value=None)
         ]
-    elif visualization_type == 'No Selection (landing page)':
-         return [
-             dcc.Graph(id='box_task_duration'),
-             dcc.Graph(id='box_avg_fixation_duration')
+    elif visualization_type == 'default_viz':
+        return [
+            dcc.Graph(id='box_task_duration')
+        ], [
+            dcc.Graph(id='box_avg_fixation_duration')
         ]
+    else:
+        return ([html.P("No visualization selected", style={'textAlign': 'center', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'fontSize': '16px', 'margin-top': '10px'})],
+                [html.P("No visualization selected", style={'textAlign': 'center', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'fontSize': '16px', 'margin-top': '10px'})])
+
+#3 - Update Filters in plot area, based on selected city:
+@app.callback(
+    [Output('dropdown_user_color', 'options'),
+     Output('dropdown_user_grey', 'options')],
+    [Input('city_dropdown', 'value')]
+)
+def update_user_dropdowns(selected_city):
+    if selected_city:
+        # Filter users based on the selected city and description
+        filtered_users_color = df[(df['CityMap'] == selected_city) & (df['description'] == 'color')]['user'].unique()
+        filtered_users_grey = df[(df['CityMap'] == selected_city) & (df['description'] == 'grey')]['user'].unique()
+
+        # Convert filtered users to dropdown options
+        color_options = [{'label': user, 'value': user} for user in filtered_users_color]
+        grey_options = [{'label': user, 'value': user} for user in filtered_users_grey]
+
+        return color_options, grey_options
+
+    return [[], []]
+
 """
 -----------------------------------------------------------------------------------------
 Section 4:
-Define KPI-Area
+Definition of Theme-Mode
+"""
+#1 - Update Theme-Mode based on selected theme:
+@app.callback(
+    [Output('page_content', 'className'),
+     Output('current_theme', 'data')],
+    [Input('theme_dropdown', 'value')]
+)
+def update_theme_mode(theme):
+    if theme == 'light':
+        return 'light_theme', 'light'
+    else:
+        return 'dark_theme', 'dark'
+
+#2 - Update Dropdown-Classname based on selected theme:
+@app.callback(
+    Output('city_dropdown', 'className'),
+    [Input('current_theme', 'data')]
+)
+def update_dropdown_classname(current_theme):
+    if current_theme == 'light':
+        return 'dropdown light_theme_dropdown'
+    else:
+        return 'dropdown dark_theme_dropdown'
+
+"""
+-----------------------------------------------------------------------------------------
+Section 5:
+Definition of KPI-Area
 """
 @app.callback(
     Output('table_container', 'children'),
-    [Input('dropdown_city', 'value')]
+    [Input('city_dropdown', 'value')]
 )
 def update_table_container(selected_city):
     if selected_city:
@@ -187,35 +296,64 @@ def update_table_container(selected_city):
         avg_fixation_duration_color = filtered_df[filtered_df['description'] == 'color']['FixationDuration'].mean() / 1000
         avg_fixation_duration_grey = filtered_df[filtered_df['description'] == 'grey']['FixationDuration'].mean() / 1000
 
-        table = dash_table.DataTable(
-            columns=[
-                {"name": "KPI", "id": "KPI"},
-                {"name": "Color Map", "id": "color"},
-                {"name": "Greyscale Map", "id": "greyscale"}
-            ],
-            data=[
-                {"KPI": "Average Task Duration", "color": f"{round(avg_task_color,2)} sec", "greyscale": f"{round(avg_task_grey,2)} sec"},
-                {"KPI": "Number of Fixation-Points", "color": fixation_points_color, "greyscale": fixation_points_grey},
-                {"KPI": "Average Saccade Length", "color": round(avg_saccade_color,2), "greyscale": round(avg_saccade_grey,2)},
-                {"KPI": "Average Fixation Duration", "color": f"{round(avg_fixation_duration_color,2)} sec", "greyscale": f"{round(avg_fixation_duration_grey,2)} sec"}
-            ],
-            style_cell={'className': 'cell-style'},
-            style_header={'className': 'header-style'},
-            style_data_conditional=[
-                {'if': {'row_index': 'even'},
-                 'className': 'data-row-even'},
-                {'if': {'row_index': 'odd'},
-                 'className': 'data-row-odd'}]
-        )
-
-        return table
+        return dash_table.DataTable(
+        id='kpi_table',
+        columns=[
+            {"name": "KPI", "id": "KPI"},
+            {"name": "Color Map", "id": "color"},
+            {"name": "Grey Map", "id": "greyscale"}
+        ],
+        data=[
+            {"KPI": "Avg. Task Duration", "color": f"{round(avg_task_color, 2)} sec",
+             "greyscale": f"{round(avg_task_grey, 2)} sec"},
+            {"KPI": "No. Fixation-Points", "color": fixation_points_color, "greyscale": fixation_points_grey},
+            {"KPI": "Avg. Saccade Length", "color": round(avg_saccade_color, 2),
+             "greyscale": round(avg_saccade_grey, 2)},
+            {"KPI": "Avg. Fixation Duration", "color": f"{round(avg_fixation_duration_color, 2)} sec",
+             "greyscale": f"{round(avg_fixation_duration_grey, 2)} sec"}
+        ],
+        style_cell={
+            'textAlign': 'left',
+            'padding': '4px',
+            'whiteSpace': 'nowrap',
+            'overflow': 'hidden',
+            'textOverflow': 'ellipsis',
+            'font': 'normal 10px Arial'
+        },
+        style_header={
+            'backgroundColor': '#000000',
+            'color': 'white',
+            'textAlign': 'left',
+            'padding': '4px',
+            'font': 'normal 10px Arial'
+        },
+        style_data_conditional=[
+            {
+                'if': {'row_index': 'even'},
+                'backgroundColor': '#E6E6E6',
+                'color': 'black',},
+            {
+                'if': {'row_index': 'odd'},
+                'backgroundColor': '#CBCBCB',
+                'color': 'black',},
+            {
+                'if': {'column_id': 'KPI'},
+                'minWidth': '120px', 'maxWidth': '120px',},
+            {
+                'if': {'column_id': 'color'},
+                'minWidth': '60px', 'maxWidth': '60px',},
+            {
+                'if': {'column_id': 'greyscale'},
+                'minWidth': '60px', 'maxWidth': '60px',},
+        ]
+    )
     else:
-        return "Please select a city map to view related KPI data"
+        return html.Div("Please select a city map to view related KPI data.", style={'fontSize': '12px', 'fontFamily': 'Arial'})
 
 """
 -----------------------------------------------------------------------------------------
-Section 5:
-Define Scatter-Plot Color
+Section 6:
+Definition of Scatter-Plot Color
 """
 def get_image_path_color(selected_city):
     file_pattern_color = f'assets/*_{selected_city}_Color.jpg'
@@ -225,15 +363,23 @@ def get_image_path_color(selected_city):
 
 @app.callback(
     Output('gaze_plot_color', 'figure'),
-    [Input('dropdown_city', 'value')])
-def update_scatter_plot_color(selected_city):
+    [Input('city_dropdown', 'value'),
+     Input('dropdown_user_color', 'value'),
+     Input('current_theme', 'data')]
+)
+def update_scatter_plot_color(selected_city, selected_user, current_theme):
     if selected_city:
         # Define a color map for users
         unique_users = df['user'].dropna().unique()
-        colors = px.colors.qualitative.Plotly  # Use Plotly's qualitative color scale
+        colors = px.colors.qualitative.Plotly
         color_map = {user: colors[i % len(colors)] for i, user in enumerate(unique_users)}
 
-        filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == 'color')]
+        # Filter and sort data based on the selected filters (city and user):
+        filtered_df = df[
+            (df['CityMap'] == selected_city) & (df['description'] == 'color')]
+
+        if selected_user:
+            filtered_df = filtered_df[filtered_df['user'] == selected_user]
 
         # Create scatter plot using the color map
         fig = px.scatter(filtered_df,
@@ -242,14 +388,22 @@ def update_scatter_plot_color(selected_city):
                          size='FixationDuration',
                          color='user',
                          color_discrete_map=color_map,
-                         title=('Color Map Observations in ' + selected_city),
                          labels={
                              'NormalizedXFixationPointX': 'X Coordinate',
                              'MappedFixationPointY': 'Y Coordinate',
                              'FixationDuration': 'Duration (ms)'
                          })
-        fig.update_xaxes(range=[0, 1651])
-        fig.update_yaxes(range=[0, 1200])
+        fig.update_xaxes(range=[0, 1651],
+                         showgrid=False,
+                         showticklabels=False,
+                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
+                         domain=[0, 1])
+
+        fig.update_yaxes(range=[0, 1200],
+                         showgrid=False,
+                         showticklabels=False,
+                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
+                         domain=[0, 1])
 
         # Add line traces for each user
         for user in filtered_df['user'].unique():
@@ -269,8 +423,8 @@ def update_scatter_plot_color(selected_city):
         fig.add_layout_image(
             dict(
                 source=image_path_color,
-                x=154.5,    # x-Position des Bildes in Pixel
-                sizex=1805.5,  # None setzt die Originalbreite
+                x=154.5,    # x-Position des Bildes in Pixe
+                sizex=1805.5,  # Originalbreite
                 y=1200,    # y-Position des Bildes in Pixel
                 sizey=1200,  # None setzt die Originalhöhe
                 xref="x",
@@ -280,18 +434,55 @@ def update_scatter_plot_color(selected_city):
                 layer="below"
             )
         )
+
+        # Set title color based on theme
+        title_color = 'black' if current_theme == 'light' else 'white'
+
         fig.update_layout(
             plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
             paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
-        )
+            xaxis_title=None,
+            yaxis_title=None,
+            title={
+                'text': f'<b>Color Map Observations in {selected_city}</b>',
+                'font': {
+                    'size': 12,
+                    'family': 'Arial, sans-serif',
+                    'color': title_color }
+            },
+            margin=dict(l=0, r=5, t=40, b=5),
+            showlegend=False)
         return fig
+
     else:
-        return px.scatter(title='Please select a city to view data')
+        fig = px.scatter()
+
+        title_color = 'black' if current_theme == 'light' else 'white'
+
+        fig.update_layout(
+            plot_bgcolor='rgba(0, 0, 0, 0)',
+            paper_bgcolor='rgba(0, 0, 0, 0)',
+            title={'text': f"<i>Please select a city to view data<i>.",
+                   'y': 0.6,
+                   'x': 0.5,
+                   'xanchor': 'center',
+                   'yanchor': 'top',
+                   'font': dict(
+                       size=16,
+                       color=title_color,
+                       family='Arial, sans-serif')},
+            showlegend=False,
+            margin=dict(l=0, r=5, t=40, b=5))
+
+        fig.update_xaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
+        fig.update_yaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
+
+        return fig
 
 """
 -----------------------------------------------------------------------------------------
-Section 6:
-Define Scatter-Plot Grey
+Section 7:
+Definition of Scatter-Plot Grey
 """
 def get_image_path_grey(selected_city):
     file_pattern_grey = f'assets/*_{selected_city}_Grey.jpg'
@@ -301,19 +492,24 @@ def get_image_path_grey(selected_city):
 
 @app.callback(
     Output('gaze_plot_grey', 'figure'),
-    [Input('dropdown_city', 'value')])
+    [Input('city_dropdown', 'value'),
+     Input('dropdown_user_grey', 'value'),
+     Input('current_theme', 'data')]
+)
 
-def update_scatter_plot_grey(selected_city):
+def update_scatter_plot_grey(selected_city, selected_user, current_theme):
     if selected_city:
         # Define a color map for users
         unique_users = df['user'].dropna().unique()
         colors = px.colors.qualitative.Plotly
         color_map = {user: colors[i % len(colors)] for i, user in enumerate(unique_users)}
 
-        # Filter and sort data based on the selected filters
+        # Filter and sort data based on the selected filters (city and user):
         filtered_df = df[
-            (df['CityMap'] == selected_city) &
-            (df['description'] == 'grey')]
+            (df['CityMap'] == selected_city) & (df['description'] == 'grey')]
+
+        if selected_user:
+            filtered_df = filtered_df[filtered_df['user'] == selected_user]
 
         # Create scatter plot using the color map
         fig = px.scatter(filtered_df,
@@ -322,14 +518,22 @@ def update_scatter_plot_grey(selected_city):
                          size='FixationDuration',
                          color='user',
                          color_discrete_map=color_map,
-                         title=('Greyscale Map Observations in ' + selected_city),
                          labels={
                              'NormalizedXFixationPointX': 'X Coordinate',
                              'MappedFixationPointY': 'Y Coordinate',
                              'FixationDuration': 'Duration (ms)'
                          })
-        fig.update_xaxes(range=[0, 1960])
-        fig.update_yaxes(range=[0, 1200])
+        fig.update_xaxes(range=[0, 1651],
+                         showgrid=False,
+                         showticklabels=False,
+                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
+                         domain=[0, 1])
+
+        fig.update_yaxes(range=[0, 1200],
+                         showgrid=False,
+                         showticklabels=False,
+                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
+                         domain=[0, 1])
 
         # Add line traces for each user
         for user in filtered_df['user'].unique():
@@ -350,7 +554,7 @@ def update_scatter_plot_grey(selected_city):
             dict(
                 source=image_path_grey,
                 x=154.5,    # x-Position des Bildes in Pixe
-                sizex=1960,  # Originalbreite
+                sizex=1805.5,  # Originalbreite
                 y=1200,    # y-Position des Bildes in Pixel
                 sizey=1200,  # None setzt die Originalhöhe
                 xref="x",
@@ -360,37 +564,87 @@ def update_scatter_plot_grey(selected_city):
                 layer="below"
             )
         )
+
+        # Set title color based on theme
+        title_color = 'black' if current_theme == 'light' else 'white'
+
         fig.update_layout(
             plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
             paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
-        )
+            xaxis_title=None,
+            yaxis_title=None,
+            title={
+                'text': f'<b>Greyscale Map Observations in {selected_city}</b>',
+                'font': {
+                    'size': 12,
+                    'family': 'Arial, sans-serif',
+                    'color': title_color }
+            },
+            margin=dict(l=0, r=5, t=40, b=5),
+            showlegend=False)
         return fig
+
     else:
-        return px.scatter(title='Please select a city to view data')
+        fig = px.scatter()
+
+        title_color = 'black' if current_theme == 'light' else 'white'
+
+        fig.update_layout(
+            plot_bgcolor='rgba(0, 0, 0, 0)',
+            paper_bgcolor='rgba(0, 0, 0, 0)',
+            title={'text': f"<i>Please select a city to view data<i>.",
+                   'y': 0.6,
+                   'x': 0.5,
+                   'xanchor': 'center',
+                   'yanchor': 'top',
+                   'font': dict(
+                       size=16,
+                       color=title_color,
+                       family='Arial, sans-serif')},
+            showlegend=False,
+            margin=dict(l=0, r=5, t=40, b=5))
+
+        fig.update_xaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
+        fig.update_yaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
+
+        return fig
 
 """
 -----------------------------------------------------------------------------------------
-Section 7:
-Define Density Heat-Map Color
+Section 8:
+Definition of Density Heat-Map Color
 """
 @app.callback(
     Output('heat_map_color', 'figure'),
-    [Input('dropdown_city', 'value')])
-
-def update_heatmap_color(selected_city):
+    [Input('city_dropdown', 'value'),
+     Input('dropdown_user_color', 'value'),
+     Input('current_theme', 'data')]
+)
+def update_heatmap_color(selected_city, selected_user, current_theme):
     if selected_city:
-        # Filter data based on the selected city
+        # Filter and sort data based on the selected filters (city and user):
         filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == 'color')]
+
+        if selected_user:
+            filtered_df = filtered_df[filtered_df['user'] == selected_user]
 
         fig = px.density_contour(filtered_df,
                                  x='NormalizedXFixationPointX',
                                  y='MappedFixationPointY',
                                  nbinsx=20,
-                                 nbinsy=20,
-                                 title=('Color Map Observations in ' + selected_city),)
+                                 nbinsy=20)
 
-        fig.update_xaxes(range=[0, 1960])
-        fig.update_yaxes(range=[0, 1200])
+        fig.update_xaxes(range=[0, 1651],
+                         showgrid=False,
+                         showticklabels=False,
+                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
+                         domain=[0, 1])
+
+        fig.update_yaxes(range=[0, 1200],
+                         showgrid=False,
+                         showticklabels=False,
+                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
+                         domain=[0, 1])
 
         # Add Background Image
         image_path_color = get_image_path_color(selected_city)
@@ -408,37 +662,88 @@ def update_heatmap_color(selected_city):
                 layer="below"
             )
         )
+
+        # Set title color based on theme
+        title_color = 'black' if current_theme == 'light' else 'white'
+
         fig.update_layout(
             plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
             paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
-        )
+            xaxis_title=None,
+            yaxis_title=None,
+            title={
+                'text': f'<b>Color Map Observations in {selected_city}</b>',
+                'font': {
+                    'size': 12,
+                    'family': 'Arial, sans-serif',
+                    'color': title_color}
+            },
+            margin=dict(l=0, r=5, t=40, b=5),
+            showlegend=False)
         return fig
+
     else:
-        return px.scatter(title='Please select a city to view data')
+        fig = px.scatter()
+
+        title_color = 'black' if current_theme == 'light' else 'white'
+
+        fig.update_layout(
+            plot_bgcolor='rgba(0, 0, 0, 0)',
+            paper_bgcolor='rgba(0, 0, 0, 0)',
+            title={'text': f"<i>Please select a city to view data<i>.",
+                   'y': 0.6,
+                   'x': 0.5,
+                   'xanchor': 'center',
+                   'yanchor': 'top',
+                   'font': dict(
+                       size=16,
+                       color= title_color,
+                       family='Arial, sans-serif')},
+            showlegend=False,
+            margin=dict(l=0, r=5, t=40, b=5))
+
+        fig.update_xaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
+        fig.update_yaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
+
+        return fig
 
 """
 -----------------------------------------------------------------------------------------
-Section 8:
-Define Density Heat-Map Grey
+Section 9:
+Definition of Density Heat-Map Grey
 """
 @app.callback(
     Output('heat_map_grey', 'figure'),
-    [Input('dropdown_city', 'value')])
+    [Input('city_dropdown', 'value'),
+     Input('dropdown_user_grey', 'value'),
+     Input('current_theme', 'data')]
+)
 
-def update_heatmap_grey(selected_city):
+def update_heatmap_grey(selected_city, selected_user, current_theme):
     if selected_city:
-        # Filter data based on the selected city
+        # Filter and sort data based on the selected filters (city and user):
         filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == 'grey')]
+
+        if selected_user:
+            filtered_df = filtered_df[filtered_df['user'] == selected_user]
 
         fig = px.density_contour(filtered_df,
                                  x='NormalizedXFixationPointX',
                                  y='MappedFixationPointY',
                                  nbinsx=20,
-                                 nbinsy=20,
-                                 title=('Greyscale Map Observations in ' + selected_city),)
+                                 nbinsy=20)
 
-        fig.update_xaxes(range=[0, 1960])
-        fig.update_yaxes(range=[0, 1200])
+        fig.update_xaxes(range=[0, 1651],
+                         showgrid=False,
+                         showticklabels=False,
+                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
+                         domain=[0, 1])
+
+        fig.update_yaxes(range=[0, 1200],
+                         showgrid=False,
+                         showticklabels=False,
+                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
+                         domain=[0, 1])
 
         # Add Background Image
         image_path_grey = get_image_path_grey(selected_city)
@@ -456,87 +761,50 @@ def update_heatmap_grey(selected_city):
                 layer="below"
             )
         )
+
+        # Set title color based on theme
+        title_color = 'black' if current_theme == 'light' else 'white'
+
         fig.update_layout(
             plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
             paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
-        )
+            xaxis_title=None,
+            yaxis_title=None,
+            title={
+                'text': f'<b>Greyscale Map Observations in {selected_city}</b>',
+                'font': {
+                    'size': 12,
+                    'family': 'Arial, sans-serif',
+                    'color': title_color}
+            },
+            margin=dict(l=0, r=5, t=40, b=5),
+            showlegend=False)
         return fig
+
     else:
-        return px.scatter(title='Please select a city to view data')
+        fig = px.scatter()
 
-
-"""
------------------------------------------------------------------------------------------
-Section 9:
-Define Box-Plot "Task Duration" (Distribution of Task Duration (A-B) per User, Color, City)
-"""
-
-@app.callback(
-    Output('box_task_duration', 'figure'),
-    [Input('radio_visualization', 'value')])
-def update_box_plot_task_duration(visualization_type):
-    if visualization_type == 'No Selection (landing page)':
-        city_order = df['City'].sort_values().unique().tolist()
-        fig = px.box(df,
-                     x='FixationDuration_aggregated',
-                     y='City',
-                     #points='outliers',
-                     color='description',
-                     boxmode='overlay',
-                     category_orders={'City': city_order},
-                     title='Distribution of Task Duration per City',
-                     color_discrete_map = {
-                         'color': 'skyblue',
-                         'grey': 'lightgrey'},
-                     labels = {'FixationDuration_aggregated': 'Task Duration [sec.]',
-                               'City': '',
-                               'description': 'Map Type'})
-
-        fig.update_traces(marker=dict(size=5), line=dict(width=1.0))
-
-        fig.update_yaxes(dtick=1,)
+        title_color = 'black' if current_theme == 'light' else 'white'
 
         fig.update_layout(
-            plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
-            paper_bgcolor='rgba(0, 0, 0, 0)')  # Set paper color to transparent
+            plot_bgcolor='rgba(0, 0, 0, 0)',
+            paper_bgcolor='rgba(0, 0, 0, 0)',
+            title={
+                'text': "<i>Please select a city to view data<i>.",
+                'y': 0.6,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': {
+                    'size': 16,
+                    'color': title_color,
+                    'family': 'Arial, sans-serif'
+                }},
+            showlegend=False,
+            margin=dict(l=0, r=5, t=40, b=5))
 
-        return fig
-
-"""
------------------------------------------------------------------------------------------
-Section 10:
-Define Box-Plot "Average Fixation Duration" (Distribution of Average Fixation Duration per User, Color, City)
-"""
-
-@app.callback(
-    Output('box_avg_fixation_duration', 'figure'),
-    [Input('radio_visualization', 'value')])
-def update_box_plot_avg_fixation_duration(visualization_type):
-    if visualization_type == 'No Selection (landing page)':
-        city_order = df['City'].sort_values().unique().tolist()
-
-        fig = px.box(df,
-                      x='FixationDuration_avg',
-                      y='City',
-                      #points='outliers',
-                      color='description',
-                      boxmode='overlay',
-                      category_orders={'City': city_order},
-                      title='Distribution of Average Fixation Duration per City',
-                      color_discrete_map={
-                          'color': 'skyblue',
-                          'grey': 'lightgrey'},
-                      labels={'FixationDuration_avg': 'Average Fixation Duration [sec.]',
-                              'City': '',
-                              'description': 'Map Type'})
-
-        fig.update_traces(marker=dict(size=5), line=dict(width=1.0))
-
-        fig.update_yaxes(dtick=1,)
-
-        fig.update_layout(
-            plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
-            paper_bgcolor='rgba(0, 0, 0, 0)')  # Set paper color to transparent
+        fig.update_xaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
+        fig.update_yaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
 
         return fig
 
