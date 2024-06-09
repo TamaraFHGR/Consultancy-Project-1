@@ -107,7 +107,7 @@ app.layout = html.Div([
                     id='city_image_color'),
                 dcc.Graph(id='gaze_plot_color'),
                 dcc.Graph(id='heat_map_color'),
-                dcc.Dropdown(id='dropdown_user_color'),
+                dcc.Dropdown(id='dropdown_user_color', multi=True),
                 # dcc.RangeSlider(id='range_slider_color',
                 #                 min=1,
                 #                 max=20,
@@ -125,7 +125,7 @@ app.layout = html.Div([
                     id='city_image_grey'),
                 dcc.Graph(id='gaze_plot_grey'),
                 dcc.Graph(id='heat_map_grey'),
-                dcc.Dropdown(id='dropdown_user_grey'),
+                dcc.Dropdown(id='dropdown_user_grey', multi=True),
                 # dcc.RangeSlider(id='range_slider_grey',
                 #                 min=1,
                 #                 max=20,
@@ -194,18 +194,18 @@ def update_plot_area(visualization_type):
     if visualization_type == 'gaze_plot':
         return [
             dcc.Graph(id='gaze_plot_color'),
-            dcc.Dropdown(id='dropdown_user_color', value=None)
+            dcc.Dropdown(id='dropdown_user_color', value=None, multi=True)
         ], [
             dcc.Graph(id='gaze_plot_grey'),
-            dcc.Dropdown(id='dropdown_user_grey', value=None)
+            dcc.Dropdown(id='dropdown_user_grey', value=None, multi=True)
         ]
     elif visualization_type == 'heat_map':
         return [
             dcc.Graph(id='heat_map_color'),
-            dcc.Dropdown(id='dropdown_user_color', value=None)
+            dcc.Dropdown(id='dropdown_user_color', value=None, multi=True)
         ], [
             dcc.Graph(id='heat_map_grey'),
-            dcc.Dropdown(id='dropdown_user_grey', value=None)
+            dcc.Dropdown(id='dropdown_user_grey', value=None, multi=True)
         ]
     elif visualization_type == 'default_viz':
         return [
@@ -368,7 +368,7 @@ def get_image_path_color(selected_city):
      Input('dropdown_user_color', 'value'),
      Input('current_theme', 'data')]
 )
-def update_scatter_plot_color(selected_city, selected_user, current_theme):
+def update_scatter_plot_color(selected_city, selected_users, current_theme):
     if selected_city:
         # Define a color map for users
         unique_users = df['user'].dropna().unique()
@@ -379,8 +379,10 @@ def update_scatter_plot_color(selected_city, selected_user, current_theme):
         filtered_df = df[
             (df['CityMap'] == selected_city) & (df['description'] == 'color')]
 
-        if selected_user:
-            filtered_df = filtered_df[filtered_df['user'] == selected_user]
+        if selected_users:
+            if isinstance(selected_users, str):
+                selected_users = [selected_users]
+            filtered_df = filtered_df[filtered_df['user'].isin(selected_users)]
 
         # Create scatter plot using the color map
         fig = px.scatter(filtered_df,
@@ -498,7 +500,7 @@ def get_image_path_grey(selected_city):
      Input('current_theme', 'data')]
 )
 
-def update_scatter_plot_grey(selected_city, selected_user, current_theme):
+def update_scatter_plot_grey(selected_city, selected_users, current_theme):
     if selected_city:
         # Define a color map for users
         unique_users = df['user'].dropna().unique()
@@ -509,8 +511,10 @@ def update_scatter_plot_grey(selected_city, selected_user, current_theme):
         filtered_df = df[
             (df['CityMap'] == selected_city) & (df['description'] == 'grey')]
 
-        if selected_user:
-            filtered_df = filtered_df[filtered_df['user'] == selected_user]
+        if selected_users:
+            if isinstance(selected_users, str):
+                selected_users = [selected_users]
+            filtered_df = filtered_df[filtered_df['user'].isin(selected_users)]
 
         # Create scatter plot using the color map
         fig = px.scatter(filtered_df,
@@ -621,19 +625,39 @@ Definition of Density Heat-Map Color
      Input('dropdown_user_color', 'value'),
      Input('current_theme', 'data')]
 )
-def update_heatmap_color(selected_city, selected_user, current_theme):
+
+def update_heatmap_color(selected_city, selected_users, current_theme):
     if selected_city:
         # Filter and sort data based on the selected filters (city and user):
         filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == 'color')]
 
-        if selected_user:
-            filtered_df = filtered_df[filtered_df['user'] == selected_user]
+        if selected_users:
+            if isinstance(selected_users, str):
+                selected_users = [selected_users]
+            filtered_df = filtered_df[filtered_df['user'].isin(selected_users)]
 
         fig = px.density_contour(filtered_df,
                                  x='NormalizedXFixationPointX',
                                  y='MappedFixationPointY',
-                                 nbinsx=20,
-                                 nbinsy=20)
+                                 nbinsx=30,
+                                 nbinsy=30)
+
+        fig.update_traces(
+            contours_showlabels=False,
+            contours_coloring="fill",
+            line=dict(
+                smoothing=1.3,
+                color='rgba(0, 0, 0, 0)'  # Set contour line color to transparent
+            ),
+            colorscale=[
+                [0.0, "rgba(0, 128, 0, 0)"],  # Green, but transparent
+                [0.2, "rgba(0, 128, 0, 0.5)"],  # Green with some opacity
+                [0.4, "rgba(173, 255, 47, 0.6)"],  # Yellow-green with moderate opacity
+                [0.6, "rgba(255, 255, 0, 0.7)"],  # Yellow with higher opacity
+                [0.8, "rgba(255, 165, 0, 0.8)"],  # Orange with more opacity
+                [1.0, "rgba(255, 0, 0, 0.9)"]  # Red with full opacity
+            ],
+            showscale=False)
 
         fig.update_xaxes(range=[0, 1651],
                          showgrid=False,
@@ -659,7 +683,7 @@ def update_heatmap_color(selected_city, selected_user, current_theme):
                 xref="x",
                 yref="y",
                 sizing="contain",  # Das Bild wird so skaliert, dass es komplett sichtbar ist, ohne gestreckt zu werden
-                opacity=0.6,
+                opacity=1,
                 layer="below"
             )
         )
@@ -691,15 +715,17 @@ def update_heatmap_color(selected_city, selected_user, current_theme):
         fig.update_layout(
             plot_bgcolor='rgba(0, 0, 0, 0)',
             paper_bgcolor='rgba(0, 0, 0, 0)',
-            title={'text': f"<i>Please select a city to view data<i>.",
-                   'y': 0.6,
-                   'x': 0.5,
-                   'xanchor': 'center',
-                   'yanchor': 'top',
-                   'font': dict(
-                       size=16,
-                       color= title_color,
-                       family='Arial, sans-serif')},
+            title={
+                'text': "<i>Please select a city to view data<i>.",
+                'y': 0.6,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': {
+                    'size': 16,
+                    'color': title_color,
+                    'family': 'Arial, sans-serif'
+                }},
             showlegend=False,
             margin=dict(l=0, r=5, t=40, b=5))
 
@@ -720,19 +746,38 @@ Definition of Density Heat-Map Grey
      Input('current_theme', 'data')]
 )
 
-def update_heatmap_grey(selected_city, selected_user, current_theme):
+def update_heatmap_grey(selected_city, selected_users, current_theme):
     if selected_city:
         # Filter and sort data based on the selected filters (city and user):
         filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == 'grey')]
 
-        if selected_user:
-            filtered_df = filtered_df[filtered_df['user'] == selected_user]
+        if selected_users:
+            if isinstance(selected_users, str):
+                selected_users = [selected_users]
+            filtered_df = filtered_df[filtered_df['user'].isin(selected_users)]
 
         fig = px.density_contour(filtered_df,
                                  x='NormalizedXFixationPointX',
                                  y='MappedFixationPointY',
-                                 nbinsx=20,
-                                 nbinsy=20)
+                                 nbinsx=30,
+                                 nbinsy=30)
+
+        fig.update_traces(
+            contours_showlabels=False,
+            contours_coloring="fill",
+            line=dict(
+                smoothing=1.3,
+                color='rgba(0, 0, 0, 0)'  # Set contour line color to transparent
+            ),
+            colorscale=[
+                [0.0, "rgba(0, 128, 0, 0)"],  # Green, but transparent
+                [0.2, "rgba(0, 128, 0, 0.5)"],  # Green with some opacity
+                [0.4, "rgba(173, 255, 47, 0.6)"],  # Yellow-green with moderate opacity
+                [0.6, "rgba(255, 255, 0, 0.7)"],  # Yellow with higher opacity
+                [0.8, "rgba(255, 165, 0, 0.8)"],  # Orange with more opacity
+                [1.0, "rgba(255, 0, 0, 0.9)"]  # Red with full opacity
+            ],
+            showscale=False)
 
         fig.update_xaxes(range=[0, 1651],
                          showgrid=False,
@@ -758,7 +803,7 @@ def update_heatmap_grey(selected_city, selected_user, current_theme):
                 xref="x",
                 yref="y",
                 sizing="contain",  # Das Bild wird so skaliert, dass es komplett sichtbar ist, ohne gestreckt zu werden
-                opacity=0.6,
+                opacity=1,
                 layer="below"
             )
         )
