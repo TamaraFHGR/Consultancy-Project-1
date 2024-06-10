@@ -118,11 +118,12 @@ app.layout = html.Div([
                 dcc.Graph(id='gaze_plot_color'),
                 dcc.Graph(id='heat_map_color'),
                 dcc.Dropdown(id='dropdown_user_color', multi=True),
-                # dcc.RangeSlider(id='range_slider_color',
-                #                 min=1,
-                #                 max=20,
-                #                 step=0.1,
-                #                 value=[1, 20]),
+                dcc.RangeSlider(id='range_slider_color',
+                                 min=1,
+                                 max=50,
+                                 step=1,
+                                 value=[1, 50],
+                                 marks={i: f'{i}' for i in range(0, 51, 10)}),
                 dcc.Graph(id='box_task_duration')
             ], id='color_plot_area', className='fifth_container'),
         ], className='second_column'),
@@ -136,11 +137,12 @@ app.layout = html.Div([
                 dcc.Graph(id='gaze_plot_grey'),
                 dcc.Graph(id='heat_map_grey'),
                 dcc.Dropdown(id='dropdown_user_grey', multi=True),
-                # dcc.RangeSlider(id='range_slider_grey',
-                #                 min=1,
-                #                 max=20,
-                #                 step=0.1,
-                #                 value=[1, 20]),
+                dcc.RangeSlider(id='range_slider_grey',
+                                min=1,
+                                max=50,
+                                step=1,
+                                value=[1, 50],
+                                marks={i: f'{i}' for i in range(0, 51, 10)}),
                 dcc.Graph(id='box_avg_fix_duration'),
             ],  id='grey_plot_area', className='sixth_container'),
         ], className='third_column'),
@@ -204,18 +206,30 @@ def update_plot_area(visualization_type):
     if visualization_type == 'gaze_plot':
         return [
             dcc.Graph(id='gaze_plot_color'),
-            dcc.Dropdown(id='dropdown_user_color', value=None, multi=True)
+            dcc.Dropdown(id='dropdown_user_color', value=None, multi=True),
+            dcc.RangeSlider(id='range_slider_color',
+                            min=1, max=50, step=1, value=[1, 50],
+                            marks={i: f'{i}' for i in range(0, 51, 10)})
         ], [
             dcc.Graph(id='gaze_plot_grey'),
-            dcc.Dropdown(id='dropdown_user_grey', value=None, multi=True)
+            dcc.Dropdown(id='dropdown_user_grey', value=None, multi=True),
+            dcc.RangeSlider(id='range_slider_grey',
+                            min=1, max=50, step=1, value=[1, 50],
+                            marks={i: f'{i}' for i in range(0, 51, 10)})
         ]
     elif visualization_type == 'heat_map':
         return [
             dcc.Graph(id='heat_map_color'),
-            dcc.Dropdown(id='dropdown_user_color', value=None, multi=True)
+            dcc.Dropdown(id='dropdown_user_color', value=None, multi=True),
+            dcc.RangeSlider(id='range_slider_color',
+                            min=1, max=50, step=1, value=[1, 50],
+                            marks={i: f'{i}' for i in range(0, 51, 10)})
         ], [
             dcc.Graph(id='heat_map_grey'),
-            dcc.Dropdown(id='dropdown_user_grey', value=None, multi=True)
+            dcc.Dropdown(id='dropdown_user_grey', value=None, multi=True),
+            dcc.RangeSlider(id='range_slider_grey',
+                            min=1, max=50, step=1, value=[1, 50],
+                            marks={i: f'{i}' for i in range(0, 51, 10)})
         ]
     elif visualization_type == 'default_viz':
         return [
@@ -227,7 +241,7 @@ def update_plot_area(visualization_type):
         return ([html.P("No visualization type selected", style={'textAlign': 'center', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'fontSize': '14px', 'margin-top': '10px'})],
                 [html.P("No visualization type selected", style={'textAlign': 'center', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'fontSize': '14px', 'margin-top': '10px'})])
 
-#3 - Update Filters in plot area, based on selected city:
+#3 - Update Dropdown-Filters in plot area, based on selected city:
 @app.callback(
     [Output('dropdown_user_color', 'options'),
      Output('dropdown_user_grey', 'options')],
@@ -246,6 +260,37 @@ def update_user_dropdowns(selected_city):
         return color_options, grey_options
 
     return [[], []]
+
+#4.1 - Update Range-Slider in plot area, based on selected city (color):
+@app.callback(
+    [Output('range_slider_color', 'min'),
+     Output('range_slider_color', 'max'),
+     Output('range_slider_color', 'value')],
+    Input('city_dropdown', 'value')
+)
+def update_range_slider_color(selected_city):
+    if selected_city:
+        filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == 'color')]
+        min_value = filtered_df['FixationDuration_aggregated'].min()
+        max_value = filtered_df['FixationDuration_aggregated'].max()
+        return min_value, max_value, [min_value, max_value]
+    return 1, 50, [1, 50]
+
+#4.2 - Update Range-Slider in plot area, based on selected city (grey):
+@app.callback(
+    [Output('range_slider_grey', 'min'),
+     Output('range_slider_grey', 'max'),
+     Output('range_slider_grey', 'value')],
+    Input('city_dropdown', 'value')
+)
+def update_range_slider_grey(selected_city):
+    if selected_city:
+        filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == 'grey')]
+        min_value = filtered_df['FixationDuration_aggregated'].min()
+        max_value = filtered_df['FixationDuration_aggregated'].max()
+        return min_value, max_value, [min_value, max_value]
+    return 1, 50, [1, 50]
+
 
 """
 -----------------------------------------------------------------------------------------
@@ -376,9 +421,10 @@ def get_image_path_color(selected_city):
     Output('gaze_plot_color', 'figure'),
     [Input('city_dropdown', 'value'),
      Input('dropdown_user_color', 'value'),
+     Input('range_slider_color', 'value'),
      Input('current_theme', 'data')]
 )
-def update_scatter_plot_color(selected_city, selected_users, current_theme):
+def update_scatter_plot_color(selected_city, selected_users, range_slider_value, current_theme):
     if selected_city:
         # Define a color map for users
         unique_users = df['user'].dropna().unique()
@@ -393,6 +439,10 @@ def update_scatter_plot_color(selected_city, selected_users, current_theme):
             if isinstance(selected_users, str):
                 selected_users = [selected_users]
             filtered_df = filtered_df[filtered_df['user'].isin(selected_users)]
+
+        min_duration, max_duration = range_slider_value
+        filtered_df = filtered_df[
+            (filtered_df['FixationDuration_aggregated'] >= min_duration) & (filtered_df['FixationDuration_aggregated'] <= max_duration)]
 
         # Create scatter plot using the color map
         fig = px.scatter(filtered_df,
@@ -507,10 +557,11 @@ def get_image_path_grey(selected_city):
     Output('gaze_plot_grey', 'figure'),
     [Input('city_dropdown', 'value'),
      Input('dropdown_user_grey', 'value'),
+     Input('range_slider_grey', 'value'),
      Input('current_theme', 'data')]
 )
 
-def update_scatter_plot_grey(selected_city, selected_users, current_theme):
+def update_scatter_plot_grey(selected_city, selected_users, range_slider_value, current_theme):
     if selected_city:
         # Define a color map for users
         unique_users = df['user'].dropna().unique()
@@ -525,6 +576,11 @@ def update_scatter_plot_grey(selected_city, selected_users, current_theme):
             if isinstance(selected_users, str):
                 selected_users = [selected_users]
             filtered_df = filtered_df[filtered_df['user'].isin(selected_users)]
+
+        min_duration, max_duration = range_slider_value
+        filtered_df = filtered_df[
+            (filtered_df['FixationDuration_aggregated'] >= min_duration) & (
+                        filtered_df['FixationDuration_aggregated'] <= max_duration)]
 
         # Create scatter plot using the color map
         fig = px.scatter(filtered_df,
@@ -633,10 +689,11 @@ Definition of Density Heat-Map Color
     Output('heat_map_color', 'figure'),
     [Input('city_dropdown', 'value'),
      Input('dropdown_user_color', 'value'),
+     Input('range_slider_color', 'value'),
      Input('current_theme', 'data')]
 )
 
-def update_heatmap_color(selected_city, selected_users, current_theme):
+def update_heatmap_color(selected_city, selected_users, range_slider_value, current_theme):
     if selected_city:
         # Filter and sort data based on the selected filters (city and user):
         filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == 'color')]
@@ -645,6 +702,11 @@ def update_heatmap_color(selected_city, selected_users, current_theme):
             if isinstance(selected_users, str):
                 selected_users = [selected_users]
             filtered_df = filtered_df[filtered_df['user'].isin(selected_users)]
+
+        min_duration, max_duration = range_slider_value
+        filtered_df = filtered_df[
+            (filtered_df['FixationDuration_aggregated'] >= min_duration) & (
+                        filtered_df['FixationDuration_aggregated'] <= max_duration)]
 
         fig = px.density_contour(filtered_df,
                                  x='NormalizedXFixationPointX',
@@ -753,10 +815,11 @@ Definition of Density Heat-Map Grey
     Output('heat_map_grey', 'figure'),
     [Input('city_dropdown', 'value'),
      Input('dropdown_user_grey', 'value'),
+     Input('range_slider_grey', 'value'),
      Input('current_theme', 'data')]
 )
 
-def update_heatmap_grey(selected_city, selected_users, current_theme):
+def update_heatmap_grey(selected_city, selected_users, range_slider_value, current_theme):
     if selected_city:
         # Filter and sort data based on the selected filters (city and user):
         filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == 'grey')]
@@ -765,6 +828,10 @@ def update_heatmap_grey(selected_city, selected_users, current_theme):
             if isinstance(selected_users, str):
                 selected_users = [selected_users]
             filtered_df = filtered_df[filtered_df['user'].isin(selected_users)]
+
+        min_duration, max_duration = range_slider_value
+        filtered_df = filtered_df[
+            (filtered_df['FixationDuration_aggregated'] >= min_duration) & (filtered_df['FixationDuration_aggregated'] <= max_duration)]
 
         fig = px.density_contour(filtered_df,
                                  x='NormalizedXFixationPointX',
