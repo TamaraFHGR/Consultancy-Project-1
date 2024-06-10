@@ -98,7 +98,7 @@
     cursor: pointer;
 }
 .viz_button.active {
-    background-color: blue;
+    background-color: #0000FFFF;
     color: white;
     border: 1px solid blue;
 }
@@ -114,7 +114,7 @@
     margin-left: 3px;
     margin-right: 3px;
     margin-top: 5px;
-    padding-bottom:90px;
+    padding-bottom:5px;
     box-sizing: border-box;
 }
 /* ------------------- */
@@ -139,6 +139,20 @@
     margin-top: 5px;
     box-sizing: border-box;
 }
+/* 7th Container - Histogram */
+.seventh_container {
+    display: block;
+    align-items: center;
+    border: 1px solid darkgrey;
+    border-radius: 5px;
+    padding: 10px;
+    gap: 2px;
+    margin-left: 3px;
+    margin-right: 3px;
+    margin-top: 5px;
+    padding-bottom: 5px;
+    box-sizing: border-box;
+}
 /* ------------------- */
 /* Theme-Mode */
 .light_theme {
@@ -154,7 +168,7 @@ html, body {
     color: inherit;
 }
 .header, .first_container, .second_container, .third_container, .fourth_container,
-.fifth_container, .sixth_container, .dash_container {
+.fifth_container, .sixth_container, .seventh_container, .dash_container {
     background-color: inherit;
     color: inherit;
 }
