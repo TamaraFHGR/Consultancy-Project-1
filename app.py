@@ -105,7 +105,7 @@ app.layout = html.Div([
                     DashIconify(icon="humbleicons:eye", width=16, height=16,
                                 style={"margin-right": "12px"}),
                     'Distribution of Task Duration:']),
-                dcc.Graph(id='hist_taskduration', style={"height": "200px"}),
+                dcc.Graph(id='hist_taskduration', style={"height": "150px"}),
             ], className='seventh_container'),
         ], className='first_column'),
 
@@ -115,8 +115,8 @@ app.layout = html.Div([
             html.Div([
                 html.Img(
                     id='city_image_color'),
-                dcc.Graph(id='gaze_plot_color', style={"height": "300px", "width": "200px"}),
-                dcc.Graph(id='heat_map_color', style={"height": "300px", "width": "200px"}),
+                dcc.Graph(id='gaze_plot_color'),
+                dcc.Graph(id='heat_map_color'),
                 dcc.Dropdown(id='dropdown_user_color', multi=True),
                 # dcc.RangeSlider(id='range_slider_color',
                 #                 min=1,
@@ -133,8 +133,8 @@ app.layout = html.Div([
             html.Div([
                 html.Img(
                     id='city_image_grey'),
-                dcc.Graph(id='gaze_plot_grey', style={"height": "300px", "width": "200px"}),
-                dcc.Graph(id='heat_map_grey', style={"height": "300px", "width": "200px"}),
+                dcc.Graph(id='gaze_plot_grey'),
+                dcc.Graph(id='heat_map_grey'),
                 dcc.Dropdown(id='dropdown_user_grey', multi=True),
                 # dcc.RangeSlider(id='range_slider_grey',
                 #                 min=1,
@@ -359,7 +359,7 @@ def update_table_container(selected_city):
         ]
     )
     else:
-        return html.Div("Please select a city map to view related KPI data.", style={'fontSize': '12px', 'fontFamily': 'Arial', 'fontStyle': 'italic'})
+        return html.Div("Please select a city map to view related KPI data.", style={'fontSize': '11.5px', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'margin-left': '17px'})
 
 """
 -----------------------------------------------------------------------------------------
@@ -941,7 +941,8 @@ def update_box_plot_task_duration(active_button, selected_city, current_theme):
         plot_bgcolor='rgba(0, 0, 0, 0)',
         paper_bgcolor='rgba(0, 0, 0, 0)',
         title={
-            'text': "<i>Please remove city selection to view overall Boxplot data.<i>",
+            'text': "<i>Please remove city selection to view overall Boxplot data<br> "
+                    " or chose another type of visualization.<i>",
             'y': 0.6,
             'x': 0.5,
             'xanchor': 'center',
@@ -1036,7 +1037,8 @@ def update_box_plot_avg_fix_duration(active_button, selected_city, current_theme
         plot_bgcolor='rgba(0, 0, 0, 0)',
         paper_bgcolor='rgba(0, 0, 0, 0)',
         title={
-            'text': "<i>Please remove city selection to view overall Boxplot data.<i>",
+            'text': "<i>Please remove city selection to view overall Boxplot data<br>"
+                    " or chose another type of visualization.<i>",
             'y': 0.6,
             'x': 0.5,
             'xanchor': 'center',
@@ -1088,7 +1090,7 @@ def update_histogram_task_duration(selected_city, current_theme):
                          domain=[0, 1])
 
         fig.update_yaxes(showgrid=False,
-                         showticklabels=True,
+                         showticklabels=False,
                          tickfont=dict(color=title_color, size=11, family='Arial, sans-serif'),
                          domain=[0, 1])
 
@@ -1097,21 +1099,29 @@ def update_histogram_task_duration(selected_city, current_theme):
             paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
             yaxis_title=None,
             xaxis_title={
-                'text': 'sec.',
+                'text': f'{selected_city} [sec.]',
                 'font': {
                     'size': 11,
                     'family': 'Arial, sans-serif',
                     'color': title_color}
             },
-            title={
-                'text': f'<b>in {selected_city}</b>',
-                'font': {
-                    'size': 12,
-                    'family': 'Arial, sans-serif',
-                    'color': title_color}
-            },
-            margin=dict(l=0, r=5, t=40, b=5),
-            showlegend=False)
+            # title={
+            #     'text': f'<b>in {selected_city}</b>',
+            #     'font': {
+            #         'size': 12,
+            #         'family': 'Arial, sans-serif',
+            #         'color': title_color}
+            # },
+            margin=dict(l=5, r=5, t=5, b=5),
+            showlegend=True,
+            legend_title_text='',
+            legend=dict(
+                font=dict(
+                    color=title_color,
+                    size=11,
+                    family='Arial, sans-serif'))
+            )
+
         return fig
 
     else:
@@ -1122,7 +1132,7 @@ def update_histogram_task_duration(selected_city, current_theme):
         fig.update_layout(
             plot_bgcolor='rgba(0, 0, 0, 0)',
             paper_bgcolor='rgba(0, 0, 0, 0)',
-            title={'text': f"<i>Please select a city to view data<i>.",
+            title={'text': f"<i>Please select a city map to view related data<i>.",
                    #'y': 0.6,
                    #'x': 0.5,
                    'xanchor': 'left',
