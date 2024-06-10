@@ -1,13 +1,12 @@
 /* 1st Container - Header and Theme-Mode */
 .first_container {
     display: grid;
-    grid-template-columns: 80% 20%;
+    grid-template-columns: 80% 10%;
     align-items: center;
-    border: 1px solid darkgrey;
-    border-radius: 5px;
+    /* border: 1px solid darkgrey;
+    border-radius: 5px;*/
     padding: 10px; /* Innenabstand zum Rand */
     gap: 2px; /* Abstand zwischen den Spalten */
-    margin: 3px;
     box-sizing: border-box;
 }
 /* Dropdown für Theme-Mode */
@@ -21,9 +20,10 @@
 .dash_container {
     display: flex;
     flex-direction: row;
-    width: 100%;
+    width: 90%;
     gap: 1px;
     box-sizing: border-box;
+
 }
 /* Erste Spalte */
 .first_column {
@@ -197,7 +197,7 @@ html, body {
 /* ------------------- */
 /* Font Style */
 h1 {
-    font-size: 22px;
+    font-size: 25px;
     font-weight: bold;
     text-align: left;
     /* margin-bottom: 12px; */

@@ -105,7 +105,7 @@ app.layout = html.Div([
                     DashIconify(icon="humbleicons:eye", width=16, height=16,
                                 style={"margin-right": "12px"}),
                     'Distribution of Task Duration:']),
-                dcc.Graph(id='hist_taskduration', style={"height": "150px"}),
+                dcc.Graph(id='hist_taskduration', style={"height": "100px"}),
             ], className='seventh_container'),
         ], className='first_column'),
 
@@ -224,8 +224,8 @@ def update_plot_area(visualization_type):
             dcc.Graph(id='box_avg_fix_duration')
         ]
     else:
-        return ([html.P("No visualization type selected", style={'textAlign': 'center', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'fontSize': '16px', 'margin-top': '10px'})],
-                [html.P("No visualization type selected", style={'textAlign': 'center', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'fontSize': '16px', 'margin-top': '10px'})])
+        return ([html.P("No visualization type selected", style={'textAlign': 'center', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'fontSize': '14px', 'margin-top': '10px'})],
+                [html.P("No visualization type selected", style={'textAlign': 'center', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'fontSize': '14px', 'margin-top': '10px'})])
 
 #3 - Update Filters in plot area, based on selected city:
 @app.callback(
@@ -359,7 +359,7 @@ def update_table_container(selected_city):
         ]
     )
     else:
-        return html.Div("Please select a city map to view related KPI data.", style={'fontSize': '11.5px', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'margin-left': '17px'})
+        return html.Div("Please select a city map to view related KPI data.", style={'fontSize': '12px', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'margin-left': '17px'})
 
 """
 -----------------------------------------------------------------------------------------
@@ -481,7 +481,7 @@ def update_scatter_plot_color(selected_city, selected_users, current_theme):
                    'xanchor': 'center',
                    'yanchor': 'top',
                    'font': dict(
-                       size=16,
+                       size=14,
                        color=title_color,
                        family='Arial, sans-serif')},
             showlegend=False,
@@ -613,7 +613,7 @@ def update_scatter_plot_grey(selected_city, selected_users, current_theme):
                    'xanchor': 'center',
                    'yanchor': 'top',
                    'font': dict(
-                       size=16,
+                       size=14,
                        color=title_color,
                        family='Arial, sans-serif')},
             showlegend=False,
@@ -732,7 +732,7 @@ def update_heatmap_color(selected_city, selected_users, current_theme):
                 'xanchor': 'center',
                 'yanchor': 'top',
                 'font': {
-                    'size': 16,
+                    'size': 14,
                     'color': title_color,
                     'family': 'Arial, sans-serif'
                 }},
@@ -852,7 +852,7 @@ def update_heatmap_grey(selected_city, selected_users, current_theme):
                 'xanchor': 'center',
                 'yanchor': 'top',
                 'font': {
-                    'size': 16,
+                    'size': 14,
                     'color': title_color,
                     'family': 'Arial, sans-serif'
                 }},
@@ -948,7 +948,7 @@ def update_box_plot_task_duration(active_button, selected_city, current_theme):
             'xanchor': 'center',
             'yanchor': 'top',
             'font': {
-                'size': 16,
+                'size': 14,
                 'color': title_color,
                 'family': 'Arial, sans-serif'
             }},
@@ -1044,7 +1044,7 @@ def update_box_plot_avg_fix_duration(active_button, selected_city, current_theme
             'xanchor': 'center',
             'yanchor': 'top',
             'font': {
-                'size': 16,
+                'size': 14,
                 'color': title_color,
                 'family': 'Arial, sans-serif'
             }},
