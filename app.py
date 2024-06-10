@@ -1138,11 +1138,14 @@ def update_histogram_task_duration(selected_city, current_theme):
         # Filter data based on the selected city
         filtered_df = df[(df['CityMap'] == selected_city)]
 
+        # Remove duplicate values of FixationDuration_aggregated for each user
+        unique_users_df = filtered_df.drop_duplicates(subset=['user', 'FixationDuration_aggregated'], keep='first')
+
         # Set title color based on theme
         title_color = 'black' if current_theme == 'light' else 'white'
 
         # Create histogram showing task duration per city
-        fig = px.histogram(filtered_df,
+        fig = px.histogram(unique_users_df,
                            x="FixationDuration_aggregated",
                            color="description",
                            color_discrete_map={
