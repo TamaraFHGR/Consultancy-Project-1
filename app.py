@@ -1,5 +1,6 @@
 from dash import Dash, dash_table, dcc, html, Input, Output, State, callback_context
 from dash_iconify import DashIconify
+from PIL import Image
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.express as px
@@ -209,13 +210,13 @@ def update_plot_area(visualization_type):
             dcc.Dropdown(id='dropdown_user_color', value=None, multi=True),
             dcc.RangeSlider(id='range_slider_color',
                             min=1, max=50, step=1, value=[1, 50],
-                            marks={i: f'{i}' for i in range(0, 51, 10)})
+                            marks={i: f'{i}' for i in range(0, 51, 5)})
         ], [
             dcc.Graph(id='gaze_plot_grey'),
             dcc.Dropdown(id='dropdown_user_grey', value=None, multi=True),
             dcc.RangeSlider(id='range_slider_grey',
                             min=1, max=50, step=1, value=[1, 50],
-                            marks={i: f'{i}' for i in range(0, 51, 10)})
+                            marks={i: f'{i}' for i in range(0, 51, 5)})
         ]
     elif visualization_type == 'heat_map':
         return [
@@ -223,13 +224,13 @@ def update_plot_area(visualization_type):
             dcc.Dropdown(id='dropdown_user_color', value=None, multi=True),
             dcc.RangeSlider(id='range_slider_color',
                             min=1, max=50, step=1, value=[1, 50],
-                            marks={i: f'{i}' for i in range(0, 51, 10)})
+                            marks={i: f'{i}' for i in range(0, 51, 5)})
         ], [
             dcc.Graph(id='heat_map_grey'),
             dcc.Dropdown(id='dropdown_user_grey', value=None, multi=True),
             dcc.RangeSlider(id='range_slider_grey',
                             min=1, max=50, step=1, value=[1, 50],
-                            marks={i: f'{i}' for i in range(0, 51, 10)})
+                            marks={i: f'{i}' for i in range(0, 51, 5)})
         ]
     elif visualization_type == 'default_viz':
         return [
@@ -261,7 +262,7 @@ def update_user_dropdowns(selected_city):
 
     return [[], []]
 
-#4.1 - Update Range-Slider in plot area, based on selected city (color):
+#4.1 - Update Range-Slider in plot area, based on selected city and viz-type (color):
 @app.callback(
     [Output('range_slider_color', 'min'),
      Output('range_slider_color', 'max'),
@@ -274,9 +275,10 @@ def update_range_slider_color(selected_city):
         min_value = filtered_df['FixationDuration_aggregated'].min()
         max_value = filtered_df['FixationDuration_aggregated'].max()
         return min_value, max_value, [min_value, max_value]
+
     return 1, 50, [1, 50]
 
-#4.2 - Update Range-Slider in plot area, based on selected city (grey):
+#4.2 - Update Range-Slider in plot area, based on selected city and viz-type (grey):
 @app.callback(
     [Output('range_slider_grey', 'min'),
      Output('range_slider_grey', 'max'),
@@ -290,7 +292,6 @@ def update_range_slider_grey(selected_city):
         max_value = filtered_df['FixationDuration_aggregated'].max()
         return min_value, max_value, [min_value, max_value]
     return 1, 50, [1, 50]
-
 
 """
 -----------------------------------------------------------------------------------------
@@ -360,12 +361,12 @@ def update_table_container(selected_city):
             {"name": "Grey Map", "id": "greyscale"}
         ],
         data=[
-            {"KPI": "Avg. Task Duration", "color": f"{round(avg_task_color, 2)} sec",
+            {"KPI": "Avgerage Task Duration", "color": f"{round(avg_task_color, 2)} sec",
              "greyscale": f"{round(avg_task_grey, 2)} sec"},
-            {"KPI": "No. Fixation-Points", "color": fixation_points_color, "greyscale": fixation_points_grey},
-            {"KPI": "Avg. Saccade Length", "color": round(avg_saccade_color, 2),
+            {"KPI": "Number of Fixation-Points", "color": fixation_points_color, "greyscale": fixation_points_grey},
+            {"KPI": "Avgerage Saccade Length", "color": round(avg_saccade_color, 2),
              "greyscale": round(avg_saccade_grey, 2)},
-            {"KPI": "Avg. Fixation Duration", "color": f"{round(avg_fixation_duration_color, 2)} sec",
+            {"KPI": "Avgerage Fixation Duration", "color": f"{round(avg_fixation_duration_color, 2)} sec",
              "greyscale": f"{round(avg_fixation_duration_grey, 2)} sec"}
         ],
         style_cell={
@@ -415,7 +416,12 @@ def get_image_path_color(selected_city):
     file_pattern_color = f'assets/*_{selected_city}_Color.jpg'
     matching_files = glob.glob(file_pattern_color)
     if matching_files:
-        return 'http://127.0.0.1:8050/' + matching_files[0]
+        image_path = matching_files[0]
+        img = Image.open(image_path)
+        width, height = img.size
+        return 'http://127.0.0.1:8050/' + image_path, width, height
+    return None, None, None
+
 
 @app.callback(
     Output('gaze_plot_color', 'figure'),
@@ -444,62 +450,80 @@ def update_scatter_plot_color(selected_city, selected_users, range_slider_value,
         filtered_df = filtered_df[
             (filtered_df['FixationDuration_aggregated'] >= min_duration) & (filtered_df['FixationDuration_aggregated'] <= max_duration)]
 
+        # Extract Image Information and normalize data (only applicable for Antwerpen):
+        image_path_color, width, height = get_image_path_color(selected_city)
+        if image_path_color and width and height:
+            # Attention: "Antwerpen_S1_Color" Data are not normalized !!!
+            if selected_city == 'Antwerpen_S1':
+                filtered_df['NormalizedPointX'] = (
+                        filtered_df['MappedFixationPointX'] / 1651.00 * width)
+                filtered_df['NormalizedPointY'] = (
+                        filtered_df['MappedFixationPointY'] / 1200.00 * height)
+            else:
+                filtered_df['NormalizedPointX'] = filtered_df['MappedFixationPointX']
+                filtered_df['NormalizedPointY'] = filtered_df['MappedFixationPointY']
+
+            # Filter for fixation points within map only
+            filtered_df = filtered_df[
+                (filtered_df['NormalizedPointX'] >= 0) & (filtered_df['NormalizedPointX'] <= width) &
+                (filtered_df['NormalizedPointY'] >= 0) & (filtered_df['NormalizedPointY'] <= height)]
+
+        # Set title color based on theme
+        title_color = 'black' if current_theme == 'light' else 'white'
+
         # Create scatter plot using the color map
         fig = px.scatter(filtered_df,
-                         x='NormalizedXFixationPointX',
-                         y='MappedFixationPointY',
+                         x='NormalizedPointX',
+                         y='NormalizedPointY',
                          size='FixationDuration',
                          color='user',
                          color_discrete_map=color_map,
                          labels={
-                             'NormalizedXFixationPointX': 'X Coordinate',
-                             'MappedFixationPointY': 'Y Coordinate',
+                             'NormalizedPointX': 'X Coordinate',
+                             'NormalizedPointY': 'Y Coordinate',
                              'FixationDuration': 'Duration (ms)'
                          })
-        fig.update_xaxes(range=[0, 1651],
-                         showgrid=False,
-                         showticklabels=False,
-                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
-                         domain=[0, 1])
-
-        fig.update_yaxes(range=[0, 1200],
-                         showgrid=False,
-                         showticklabels=False,
-                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
-                         domain=[0, 1])
 
         # Add line traces for each user
         for user in filtered_df['user'].unique():
             user_df = filtered_df[filtered_df['user'] == user]
             fig.add_trace(
                 go.Scatter(
-                    x=user_df['NormalizedXFixationPointX'],
-                    y=user_df['MappedFixationPointY'],
+                    x=user_df['NormalizedPointX'],
+                    y=user_df['NormalizedPointY'],
                     mode='lines',
                     line=dict(width=2, color=color_map[user]),
                     name=f"Scanpath for {user}"
                 )
             )
+        fig.update_xaxes(
+            range=[0, width],
+            autorange=False,
+            showgrid=False,
+            showticklabels=True,
+            tickfont=dict(color=title_color, size=9, family='Arial, sans-serif'))
 
-        # Add Background Image
-        image_path_color = get_image_path_color(selected_city)
+        fig.update_yaxes(
+            range=[height, 0],
+            autorange=False,
+            showgrid=False,
+            showticklabels=True,
+            tickfont=dict(color=title_color, size=9, family='Arial, sans-serif'))
+
         fig.add_layout_image(
             dict(
                 source=image_path_color,
-                x=154.5,    # x-Position des Bildes in Pixe
-                sizex=1805.5,  # Originalbreite
-                y=1200,    # y-Position des Bildes in Pixel
-                sizey=1200,  # None setzt die Originalhöhe
+                x=0,
+                sizex=width,
+                y=0,
+                sizey=height,
                 xref="x",
                 yref="y",
-                sizing="contain",  # Das Bild wird so skaliert, dass es komplett sichtbar ist, ohne gestreckt zu werden
-                opacity=0.6,
+                sizing="stretch",
+                opacity=0.8,
                 layer="below"
             )
         )
-
-        # Set title color based on theme
-        title_color = 'black' if current_theme == 'light' else 'white'
 
         fig.update_layout(
             plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
@@ -551,7 +575,11 @@ def get_image_path_grey(selected_city):
     file_pattern_grey = f'assets/*_{selected_city}_Grey.jpg'
     matching_files = glob.glob(file_pattern_grey)
     if matching_files:
-        return 'http://127.0.0.1:8050/' + matching_files[0]
+        image_path = matching_files[0]
+        img = Image.open(image_path)
+        width, height = img.size
+        return 'http://127.0.0.1:8050/' + image_path, width, height
+    return None, None, None
 
 @app.callback(
     Output('gaze_plot_grey', 'figure'),
@@ -582,36 +610,36 @@ def update_scatter_plot_grey(selected_city, selected_users, range_slider_value, 
             (filtered_df['FixationDuration_aggregated'] >= min_duration) & (
                         filtered_df['FixationDuration_aggregated'] <= max_duration)]
 
+        # Extract Image Information:
+        image_path_grey, width, height = get_image_path_grey(selected_city)
+        if image_path_grey and width and height:
+            # Filter for fixation points within map only
+            filtered_df = filtered_df[
+                (filtered_df['MappedFixationPointX'] >= 0) & (filtered_df['MappedFixationPointX'] <= width) &
+                (filtered_df['MappedFixationPointY'] >= 0) & (filtered_df['MappedFixationPointY'] <= height)]
+
+        # Set title color based on theme
+        title_color = 'black' if current_theme == 'light' else 'white'
+
         # Create scatter plot using the color map
         fig = px.scatter(filtered_df,
-                         x='NormalizedXFixationPointX',
+                         x='MappedFixationPointX',
                          y='MappedFixationPointY',
                          size='FixationDuration',
                          color='user',
                          color_discrete_map=color_map,
                          labels={
-                             'NormalizedXFixationPointX': 'X Coordinate',
+                             'MappedFixationPointX': 'X Coordinate',
                              'MappedFixationPointY': 'Y Coordinate',
                              'FixationDuration': 'Duration (ms)'
                          })
-        fig.update_xaxes(range=[0, 1651],
-                         showgrid=False,
-                         showticklabels=False,
-                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
-                         domain=[0, 1])
-
-        fig.update_yaxes(range=[0, 1200],
-                         showgrid=False,
-                         showticklabels=False,
-                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
-                         domain=[0, 1])
 
         # Add line traces for each user
         for user in filtered_df['user'].unique():
             user_df = filtered_df[filtered_df['user'] == user]
             fig.add_trace(
                 go.Scatter(
-                    x=user_df['NormalizedXFixationPointX'],
+                    x=user_df['MappedFixationPointX'],
                     y=user_df['MappedFixationPointY'],
                     mode='lines',
                     line=dict(width=2, color=color_map[user]),
@@ -619,25 +647,35 @@ def update_scatter_plot_grey(selected_city, selected_users, range_slider_value, 
                 )
             )
 
+        fig.update_xaxes(
+            range=[0, width],
+            autorange=False,
+            showgrid=False,
+            showticklabels=True,
+            tickfont=dict(color=title_color, size=9, family='Arial, sans-serif'))
+
+        fig.update_yaxes(
+            range=[height, 0],
+            autorange=False,
+            showgrid=False,
+            showticklabels=True,
+            tickfont=dict(color=title_color, size=9, family='Arial, sans-serif'))
+
         # Add Background Image
-        image_path_grey = get_image_path_grey(selected_city)
         fig.add_layout_image(
             dict(
                 source=image_path_grey,
-                x=154.5,    # x-Position des Bildes in Pixe
-                sizex=1805.5,  # Originalbreite
-                y=1200,    # y-Position des Bildes in Pixel
-                sizey=1200,  # None setzt die Originalhöhe
+                x=0,
+                sizex=width,
+                y=0,
+                sizey=height,
                 xref="x",
                 yref="y",
-                sizing="contain",  # Das Bild wird so skaliert, dass es komplett sichtbar ist, ohne gestreckt zu werden
-                opacity=0.6,
+                sizing="stretch",
+                opacity=0.8,
                 layer="below"
             )
         )
-
-        # Set title color based on theme
-        title_color = 'black' if current_theme == 'light' else 'white'
 
         fig.update_layout(
             plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
@@ -708,9 +746,30 @@ def update_heatmap_color(selected_city, selected_users, range_slider_value, curr
             (filtered_df['FixationDuration_aggregated'] >= min_duration) & (
                         filtered_df['FixationDuration_aggregated'] <= max_duration)]
 
+        # Extract Image Information and normalize data (only applicable for Antwerpen):
+        image_path_color, width, height = get_image_path_color(selected_city)
+        if image_path_color and width and height:
+            # Attention: "Antwerpen_S1_Color" Data are not normalized !!!
+            if selected_city == 'Antwerpen_S1':
+                filtered_df['NormalizedPointX'] = (
+                        filtered_df['MappedFixationPointX'] / 1651.00 * width)
+                filtered_df['NormalizedPointY'] = (
+                        filtered_df['MappedFixationPointY'] / 1200.00 * height)
+            else:
+                filtered_df['NormalizedPointX'] = filtered_df['MappedFixationPointX']
+                filtered_df['NormalizedPointY'] = filtered_df['MappedFixationPointY']
+
+            # Filter for fixation points within map only
+            filtered_df = filtered_df[
+                (filtered_df['NormalizedPointX'] >= 0) & (filtered_df['NormalizedPointX'] <= width) &
+                (filtered_df['NormalizedPointY'] >= 0) & (filtered_df['NormalizedPointY'] <= height)]
+
+        # Set title color based on theme
+        title_color = 'black' if current_theme == 'light' else 'white'
+
         fig = px.density_contour(filtered_df,
-                                 x='NormalizedXFixationPointX',
-                                 y='MappedFixationPointY',
+                                 x='NormalizedPointX',
+                                 y='NormalizedPointY',
                                  nbinsx=30,
                                  nbinsy=30)
 
@@ -731,37 +790,34 @@ def update_heatmap_color(selected_city, selected_users, range_slider_value, curr
             ],
             showscale=False)
 
-        fig.update_xaxes(range=[0, 1651],
-                         showgrid=False,
-                         showticklabels=False,
-                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
-                         domain=[0, 1])
+        fig.update_xaxes(
+            range=[0, width],
+            autorange=False,
+            showgrid=False,
+            showticklabels=True,
+            tickfont=dict(color=title_color, size=9, family='Arial, sans-serif'))
 
-        fig.update_yaxes(range=[0, 1200],
-                         showgrid=False,
-                         showticklabels=False,
-                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
-                         domain=[0, 1])
+        fig.update_yaxes(
+            range=[height, 0],
+            autorange=False,
+            showgrid=False,
+            showticklabels=True,
+            tickfont=dict(color=title_color, size=9, family='Arial, sans-serif'))
 
-        # Add Background Image
-        image_path_color = get_image_path_color(selected_city)
         fig.add_layout_image(
             dict(
                 source=image_path_color,
-                x=154.5,    # x-Position des Bildes in Pixel
-                sizex=1805.5,  # None setzt die Originalbreite
-                y=1200,    # y-Position des Bildes in Pixel
-                sizey=1200,  # None setzt die Originalhöhe
+                x=0,
+                sizex=width,
+                y=0,
+                sizey=height,
                 xref="x",
                 yref="y",
-                sizing="contain",  # Das Bild wird so skaliert, dass es komplett sichtbar ist, ohne gestreckt zu werden
-                opacity=1,
+                sizing="stretch",
+                opacity=0.8,
                 layer="below"
             )
         )
-
-        # Set title color based on theme
-        title_color = 'black' if current_theme == 'light' else 'white'
 
         fig.update_layout(
             plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
@@ -831,10 +887,22 @@ def update_heatmap_grey(selected_city, selected_users, range_slider_value, curre
 
         min_duration, max_duration = range_slider_value
         filtered_df = filtered_df[
-            (filtered_df['FixationDuration_aggregated'] >= min_duration) & (filtered_df['FixationDuration_aggregated'] <= max_duration)]
+            (filtered_df['FixationDuration_aggregated'] >= min_duration) & (
+                    filtered_df['FixationDuration_aggregated'] <= max_duration)]
+
+        # Extract Image Information:
+        image_path_grey, width, height = get_image_path_grey(selected_city)
+        if image_path_grey and width and height:
+            # Filter for fixation points within map only
+            filtered_df = filtered_df[
+                (filtered_df['MappedFixationPointX'] >= 0) & (filtered_df['MappedFixationPointX'] <= width) &
+                (filtered_df['MappedFixationPointY'] >= 0) & (filtered_df['MappedFixationPointY'] <= height)]
+
+        # Set title color based on theme
+        title_color = 'black' if current_theme == 'light' else 'white'
 
         fig = px.density_contour(filtered_df,
-                                 x='NormalizedXFixationPointX',
+                                 x='MappedFixationPointX',
                                  y='MappedFixationPointY',
                                  nbinsx=30,
                                  nbinsy=30)
@@ -856,37 +924,34 @@ def update_heatmap_grey(selected_city, selected_users, range_slider_value, curre
             ],
             showscale=False)
 
-        fig.update_xaxes(range=[0, 1651],
-                         showgrid=False,
-                         showticklabels=False,
-                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
-                         domain=[0, 1])
+        fig.update_xaxes(
+            range=[0, width],
+            autorange=False,
+            showgrid=False,
+            showticklabels=True,
+            tickfont=dict(color=title_color, size=9, family='Arial, sans-serif'))
 
-        fig.update_yaxes(range=[0, 1200],
-                         showgrid=False,
-                         showticklabels=False,
-                         #tickfont=dict(color='#808080', size=14, family='Arial, sans-serif'),
-                         domain=[0, 1])
+        fig.update_yaxes(
+            range=[height, 0],
+            autorange=False,
+            showgrid=False,
+            showticklabels=True,
+            tickfont=dict(color=title_color, size=9, family='Arial, sans-serif'))
 
-        # Add Background Image
-        image_path_grey = get_image_path_grey(selected_city)
         fig.add_layout_image(
             dict(
                 source=image_path_grey,
-                x=154.5,    # x-Position des Bildes in Pixel
-                sizex=1805.5,  # None setzt die Originalbreite
-                y=1200,    # y-Position des Bildes in Pixel
-                sizey=1200,  # None setzt die Originalhöhe
+                x=0,
+                sizex=width,
+                y=0,
+                sizey=height,
                 xref="x",
                 yref="y",
-                sizing="contain",  # Das Bild wird so skaliert, dass es komplett sichtbar ist, ohne gestreckt zu werden
-                opacity=1,
+                sizing="stretch",
+                opacity=0.8,
                 layer="below"
             )
         )
-
-        # Set title color based on theme
-        title_color = 'black' if current_theme == 'light' else 'white'
 
         fig.update_layout(
             plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
