@@ -15,7 +15,7 @@ Section 1:
 Data Import and Preparation
 """
 # Data reading:
-data_path = 'assets/all_fixation_data_cleaned_up.csv'
+data_path = 'assets/all_fixation_data_cleaned_up_3.csv'
 df = pd.read_csv(data_path, sep=';')
 
 # Add "Task Duration in sec" (per User and Stimulus) to df:
@@ -28,6 +28,9 @@ avg_fix_duration = df.groupby(['user', 'CityMap', 'description'])['FixationDurat
 avg_fix_duration['FixationDuration'] = avg_fix_duration['FixationDuration'] / 1000
 df = pd.merge(df, avg_fix_duration, on=['user', 'CityMap', 'description'], suffixes=('', '_avg'))
 
+# Add Category for Task Duration:
+df['TaskDurationCategory'] = pd.cut(df['FixationDuration_aggregated'], bins=[0, 10, float('inf')],
+                                    labels=['<10 sec.', '>=10 sec.'])
 #print('task_duration:')
 #print(df['FixationDuration_aggregated'])
 #print(df['FixationDuration_aggregated'].min)
@@ -43,8 +46,8 @@ app.layout = html.Div([
     # Header and Theme-Mode:
     html.Div([
         html.Div([
-            html.H1('Analysis of Eye-Tracking-Data'),],
-            #html.H2('This dasboard enables the visual exploration based on different city maps'), ],
+            html.H1('Analysis of Eye-Tracking-Data'),
+            html.H4('created on behalf of FHGR Chur, last updated: 20.06.2024')],
             className='header'),
         dcc.Dropdown(
             id='theme_dropdown',
@@ -63,50 +66,48 @@ app.layout = html.Div([
         html.Div([
             # Input-Containers:
             html.Div([
-                # City Dropdown:
-                html.Div([
-                    html.H3([
-                        DashIconify(icon="vaadin:train", width=16, height=16, style={"margin-right": "12px"}),
-                        'Please select a City:']),
-                    dcc.Dropdown(
-                        id='city_dropdown',
-                        options=[{'label': city, 'value': city} for city in sorted(df['CityMap'].unique())],
-                        value=None,
-                        clearable=True,
-                        className='dropdown'),
-                ], className='second_container'),
-
                 # Visualization Type Buttons:
                 html.Div([
                     html.H3([
                         DashIconify(icon="ion:bar-chart", width=16, height=16, style={"margin-right": "12px"}),
-                        'Please choose a Type of Visualization:']),
+                        'Choose a Type of Visualization']),
                     html.Div([
                         html.Button('Boxplot', id='default_viz', n_clicks=0, className='viz_button'),
                         html.Button('Heat Map', id='heat_map', n_clicks=0, className='viz_button'),
-                        html.Button('Gaze Plot', id='gaze_plot', n_clicks=0, className='viz_button'),
+                        html.Button('Gazeplot', id='gaze_plot', n_clicks=0, className='viz_button'),
+                        html.Button('Correlation', id='scatter_plot', n_clicks=0, className='viz_button'),
                     ], id='button_viz_type', className='button_viz_type'),
-                    dcc.Store(id='active-button', data='Boxplot'),
+                    dcc.Store(id='active-button', data='default_viz'),
                     html.Div(id='output-section'),
                 ], className='third_container'),
             ], className='input_container'),
+
+                # City Dropdown:
+                html.Div([
+                    html.H3([
+                        DashIconify(icon="vaadin:train", width=16, height=16, style={"margin-right": "12px"}),
+                        'Choose a City to explore in detail']),
+                    dcc.Dropdown(
+                        id='city_dropdown',
+                        options=[{'label': city, 'value': city} for city in sorted(df['CityMap'].unique())],
+                        placeholder='Select a City Map...',
+                        value=None,
+                        clearable=True,
+                        className='dropdown'),
+                ], className='second_container'),
 
             # Output-Container KPI-Table:
             html.Div([
                 html.H3([
                     DashIconify(icon="fluent:arrow-trending-lines-24-filled", width=16, height=16,
                                 style={"margin-right": "12px"}),
-                    'Statistical Key Performance Indicators:']),
+                    'Statistical Key Performance Indicators']),
                 html.Div(id='table_container')
             ], className='fourth_container'),
 
             # Output-Container Histogram:
             html.Div([
-                html.H3([
-                    DashIconify(icon="humbleicons:eye", width=16, height=16,
-                                style={"margin-right": "12px"}),
-                    'Distribution of Task Duration:']),
-                dcc.Graph(id='hist_taskduration', style={"height": "100px"}),
+                dcc.Graph(id='hist_taskduration'), #style={"height": "150px"}),
             ], className='seventh_container'),
         ], className='first_column'),
 
@@ -119,13 +120,10 @@ app.layout = html.Div([
                 dcc.Graph(id='gaze_plot_color'),
                 dcc.Graph(id='heat_map_color'),
                 dcc.Dropdown(id='dropdown_user_color', multi=True),
-                dcc.RangeSlider(id='range_slider_color',
-                                 min=1,
-                                 max=50,
-                                 step=1,
-                                 value=[1, 50],
-                                 marks={i: f'{i}' for i in range(0, 51, 10)}),
-                dcc.Graph(id='box_task_duration')
+                dcc.RangeSlider(id='range_slider_color', min=1, max=50, step=1, value=[1, 50],
+                                marks={i: f'{i}' for i in range(0, 51, 5)}),
+                dcc.Graph(id='box_task_duration'),
+                dcc.Graph(id='scatter_correlation_color')
             ], id='color_plot_area', className='fifth_container'),
         ], className='second_column'),
 
@@ -138,13 +136,10 @@ app.layout = html.Div([
                 dcc.Graph(id='gaze_plot_grey'),
                 dcc.Graph(id='heat_map_grey'),
                 dcc.Dropdown(id='dropdown_user_grey', multi=True),
-                dcc.RangeSlider(id='range_slider_grey',
-                                min=1,
-                                max=50,
-                                step=1,
-                                value=[1, 50],
-                                marks={i: f'{i}' for i in range(0, 51, 10)}),
+                dcc.RangeSlider(id='range_slider_grey', min=1, max=50, step=1, value=[1, 50],
+                                marks = {i: f'{i}' for i in range(0, 51, 5)}),
                 dcc.Graph(id='box_avg_fix_duration'),
+                dcc.Graph(id='scatter_correlation_grey')
             ],  id='grey_plot_area', className='sixth_container'),
         ], className='third_column'),
     ], className='dash_container'),
@@ -161,26 +156,25 @@ Definition of active Viz-Button and Output-Section (based on active Viz-Type)
     [Output('default_viz', 'className'),
      Output('heat_map', 'className'),
      Output('gaze_plot', 'className'),
+     Output('scatter_plot', 'className'),
      Output('active-button', 'data')],
     [Input('default_viz', 'n_clicks'),
      Input('heat_map', 'n_clicks'),
-     Input('gaze_plot', 'n_clicks')],
+     Input('gaze_plot', 'n_clicks'),
+     Input('scatter_plot', 'n_clicks')],
     [State('active-button', 'data')]
 )
 
-def update_active_button(btn1, btn2, btn3, active_btn):
+def update_active_button(btn1, btn2, btn3, btn4, active_btn):
     ctx = callback_context
-    if not ctx.triggered:
-        return ['viz_button active' if active_btn == 'default_viz' else 'viz_button',
-                'viz_button active' if active_btn == 'heat_map' else 'viz_button',
-                'viz_button active' if active_btn == 'gaze_plot' else 'viz_button',
-                active_btn]
-    else:
-        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        return ['viz_button active' if button_id == 'default_viz' else 'viz_button',
-                'viz_button active' if button_id == 'heat_map' else 'viz_button',
-                'viz_button active' if button_id == 'gaze_plot' else 'viz_button',
-                button_id]
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else 'default_viz'
+    return [
+        'viz_button active' if button_id == 'default_viz' else 'viz_button',
+        'viz_button active' if button_id == 'heat_map' else 'viz_button',
+        'viz_button active' if button_id == 'gaze_plot' else 'viz_button',
+        'viz_button active' if button_id == 'scatter_plot' else 'viz_button',
+        button_id
+    ]
 
 #2 - Update output and plot area based on active button:
 @app.callback(
@@ -194,53 +188,47 @@ def update_output(active_button):
         return ''
     elif active_button == 'gaze_plot':
         return ''
+    elif active_button == 'scatter_plot':
+        return ''
     else:
         return ''
 
 @app.callback(
     [Output('color_plot_area', 'children'),
-     (Output('grey_plot_area', 'children'))],
-    [Input('active-button', 'data')]
+     Output('grey_plot_area', 'children')],
+    [Input('active-button', 'data'),
+     Input('city_dropdown', 'value')]
 )
+def update_plot_area(visualization_type, selected_city):
+    if visualization_type in ['gaze_plot', 'heat_map']:
+        min_val_color, max_val_color, value_range_color, marks_color = update_range_slider_color(selected_city)
+        min_val_grey, max_val_grey, value_range_grey, marks_grey = update_range_slider_grey(selected_city)
 
-def update_plot_area(visualization_type):
-    if visualization_type == 'gaze_plot':
         return [
-            dcc.Graph(id='gaze_plot_color'),
-            dcc.Dropdown(id='dropdown_user_color', value=None, multi=True),
+            dcc.Graph(id=f'{visualization_type}_color'),
+            dcc.Dropdown(id='dropdown_user_color', value=None, multi=True, placeholder='filter by User(s)...'),
+            html.P('filter by Task Duration:'),
             dcc.RangeSlider(id='range_slider_color',
-                            min=1, max=50, step=1, value=[1, 50],
-                            marks={i: f'{i}' for i in range(0, 51, 5)})
+                            min=min_val_color, max=max_val_color, value=value_range_color, marks=marks_color)
         ], [
-            dcc.Graph(id='gaze_plot_grey'),
-            dcc.Dropdown(id='dropdown_user_grey', value=None, multi=True),
+            dcc.Graph(id=f'{visualization_type}_grey'),
+            dcc.Dropdown(id='dropdown_user_grey', value=None, multi=True, placeholder='filter by User(s)...'),
+            html.P('filter by Task Duration:'),
             dcc.RangeSlider(id='range_slider_grey',
-                            min=1, max=50, step=1, value=[1, 50],
-                            marks={i: f'{i}' for i in range(0, 51, 5)})
+                            min=min_val_grey, max=max_val_grey, value=value_range_grey, marks=marks_grey)
         ]
-    elif visualization_type == 'heat_map':
+    elif visualization_type == 'scatter_plot':
         return [
-            dcc.Graph(id='heat_map_color'),
-            dcc.Dropdown(id='dropdown_user_color', value=None, multi=True),
-            dcc.RangeSlider(id='range_slider_color',
-                            min=1, max=50, step=1, value=[1, 50],
-                            marks={i: f'{i}' for i in range(0, 51, 5)})
+            dcc.Graph(id='scatter_correlation_color')
         ], [
-            dcc.Graph(id='heat_map_grey'),
-            dcc.Dropdown(id='dropdown_user_grey', value=None, multi=True),
-            dcc.RangeSlider(id='range_slider_grey',
-                            min=1, max=50, step=1, value=[1, 50],
-                            marks={i: f'{i}' for i in range(0, 51, 5)})
+            dcc.Graph(id='scatter_correlation_grey')
         ]
-    elif visualization_type == 'default_viz':
+    else:
         return [
             dcc.Graph(id='box_task_duration')
         ], [
             dcc.Graph(id='box_avg_fix_duration')
         ]
-    else:
-        return ([html.P("No visualization type selected", style={'textAlign': 'center', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'fontSize': '14px', 'margin-top': '10px'})],
-                [html.P("No visualization type selected", style={'textAlign': 'center', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'fontSize': '14px', 'margin-top': '10px'})])
 
 #3 - Update Dropdown-Filters in plot area, based on selected city:
 @app.callback(
@@ -262,36 +250,57 @@ def update_user_dropdowns(selected_city):
 
     return [[], []]
 
-#4.1 - Update Range-Slider in plot area, based on selected city and viz-type (color):
+#4 - Update Range-Slider in plot area, based on selected city and viz-type:
+
+#4.1 - Min, Max, Value and Marks for Range-Slider:
+def to_int(value):
+    return int(value) if not pd.isna(value) else 0
+
+def update_range_slider(selected_city, description, buffer=5):
+    if selected_city:
+        filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == description)]
+        if not filtered_df.empty:
+            min_value = to_int(filtered_df['FixationDuration_aggregated'].min())
+            max_value = to_int(filtered_df['FixationDuration_aggregated'].max())
+            # Fester Wert von 2 zur Max-Grenze hinzufügen
+            max_value_with_buffer = max_value + buffer
+            marks = {i: f'{i}' for i in range(min_value, max_value_with_buffer + 1, max(1, (max_value_with_buffer - min_value) // 5))}
+            return min_value, max_value_with_buffer, [min_value, max_value_with_buffer], marks
+        else:
+            return 0, 0, [0, 0], {0: '0'}
+    else:
+        global_min = to_int(df['FixationDuration_aggregated'].min())
+        global_max = to_int(df['FixationDuration_aggregated'].max())
+        # Fester Wert von 2 zur globalen Max-Grenze hinzufügen
+        global_max_with_buffer = global_max + buffer
+        marks = {i: f'{i}' for i in range(global_min, global_max_with_buffer + 1, max(1, (global_max_with_buffer - global_min) // 5))}
+        return global_min, global_max_with_buffer, [global_min, global_max_with_buffer], marks
+
+#4.2 - Update color Slider:
+def update_range_slider_color(selected_city):
+    return update_range_slider(selected_city, 'color')
+
+#4.3 - Update grey Slider:
+def update_range_slider_grey(selected_city):
+    return update_range_slider(selected_city, 'grey')
+
+#4.4 - Callback for both Slider:
 @app.callback(
     [Output('range_slider_color', 'min'),
      Output('range_slider_color', 'max'),
-     Output('range_slider_color', 'value')],
-    Input('city_dropdown', 'value')
-)
-def update_range_slider_color(selected_city):
-    if selected_city:
-        filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == 'color')]
-        min_value = filtered_df['FixationDuration_aggregated'].min()
-        max_value = filtered_df['FixationDuration_aggregated'].max()
-        return min_value, max_value, [min_value, max_value]
-
-    return 1, 50, [1, 50]
-
-#4.2 - Update Range-Slider in plot area, based on selected city and viz-type (grey):
-@app.callback(
-    [Output('range_slider_grey', 'min'),
+     Output('range_slider_color', 'value'),
+     Output('range_slider_color', 'marks'),
+     Output('range_slider_grey', 'min'),
      Output('range_slider_grey', 'max'),
-     Output('range_slider_grey', 'value')],
-    Input('city_dropdown', 'value')
+     Output('range_slider_grey', 'value'),
+     Output('range_slider_grey', 'marks')],
+    [Input('city_dropdown', 'value')]
 )
-def update_range_slider_grey(selected_city):
-    if selected_city:
-        filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == 'grey')]
-        min_value = filtered_df['FixationDuration_aggregated'].min()
-        max_value = filtered_df['FixationDuration_aggregated'].max()
-        return min_value, max_value, [min_value, max_value]
-    return 1, 50, [1, 50]
+def update_range_sliders(selected_city):
+    min_color, max_color, value_color, marks_color = update_range_slider_color(selected_city)
+    min_grey, max_grey, value_grey, marks_grey = update_range_slider_grey(selected_city)
+    return min_color, max_color, value_color, marks_color, min_grey, max_grey, value_grey, marks_grey
+
 
 """
 -----------------------------------------------------------------------------------------
@@ -331,43 +340,53 @@ Definition of KPI-Area
     [Input('city_dropdown', 'value')]
 )
 def update_table_container(selected_city):
+    # Filter data based on the selected city
     if selected_city:
-        # Filter data based on the selected city
-        filtered_df = df[(df['CityMap'] == selected_city)]
+        filtered_df = df[df['CityMap'] == selected_city]
+        unique_users_df = filtered_df.drop_duplicates(subset=['user', 'FixationDuration_aggregated'], keep='first')
+    # No city is selected
+    else:
+        filtered_df = df
+        unique_users_df = df.drop_duplicates(subset=['user', 'CityMap', 'FixationDuration_aggregated'], keep='first')
 
-        # 1. Average Task Duration (seconds):
-        # Sum of FixationDuration per Color / Number of Users per Color
-        avg_task_color = (filtered_df[filtered_df['description'] == 'color']['FixationDuration'].sum() / filtered_df[filtered_df['description'] == 'color']['user'].nunique()) / 1000
-        avg_task_grey = (filtered_df[filtered_df['description'] == 'grey']['FixationDuration'].sum() / filtered_df[filtered_df['description'] == 'grey']['user'].nunique()) / 1000
+    # 1. Average Task Duration (seconds):
+    # Sum of FixationDuration per Color / Number of Users per Color
+    avg_task_color = unique_users_df[unique_users_df['description'] == 'color']['FixationDuration_aggregated'].mean()
+    avg_task_grey = unique_users_df[unique_users_df['description'] == 'grey']['FixationDuration_aggregated'].mean()
 
-        # 2. Number of Fixation-Points (without unit):
-        fixation_points_color = filtered_df[filtered_df['description'] == 'color'].shape[0]
-        fixation_points_grey = filtered_df[filtered_df['description'] == 'grey'].shape[0]
+    # 2. Number of Fixation-Points (without unit):
+    fixation_points_color = filtered_df[filtered_df['description'] == 'color'].shape[0]
+    fixation_points_grey = filtered_df[filtered_df['description'] == 'grey'].shape[0]
 
-        # 3. Average Saccade Length (without unit):
-        # Lenght of the movement between two fixation points
-        avg_saccade_color = filtered_df[filtered_df['description'] == 'color']['SaccadeLength'].mean()
-        avg_saccade_grey = filtered_df[filtered_df['description'] == 'grey']['SaccadeLength'].mean()
+    # 3. Average Saccade Length (without unit):
+    # Lenght of the movement between two fixation points
+    avg_saccade_color = filtered_df[filtered_df['description'] == 'color']['SaccadeLength'].mean()
+    avg_saccade_grey = filtered_df[filtered_df['description'] == 'grey']['SaccadeLength'].mean()
 
-        # 4. Average Fixation Duration (seconds):
-        avg_fixation_duration_color = filtered_df[filtered_df['description'] == 'color']['FixationDuration'].mean() / 1000
-        avg_fixation_duration_grey = filtered_df[filtered_df['description'] == 'grey']['FixationDuration'].mean() / 1000
+    # 4. Average Fixation Duration (seconds):
+    avg_fixation_duration_color = unique_users_df[unique_users_df['description'] == 'color']['FixationDuration_avg'].mean()
+    avg_fixation_duration_grey = unique_users_df[unique_users_df['description'] == 'grey']['FixationDuration_avg'].mean()
 
-        return dash_table.DataTable(
+    return dash_table.DataTable(
         id='kpi_table',
         columns=[
-            {"name": "KPI", "id": "KPI"},
+            {"name": f"KPI for {selected_city or 'all cities'}", "id": "KPI"},
             {"name": "Color Map", "id": "color"},
-            {"name": "Grey Map", "id": "greyscale"}
+            {"name": "Greyscale Map", "id": "greyscale"}
         ],
         data=[
-            {"KPI": "Avgerage Task Duration", "color": f"{round(avg_task_color, 2)} sec",
-             "greyscale": f"{round(avg_task_grey, 2)} sec"},
-            {"KPI": "Number of Fixation-Points", "color": fixation_points_color, "greyscale": fixation_points_grey},
-            {"KPI": "Avgerage Saccade Length", "color": round(avg_saccade_color, 2),
-             "greyscale": round(avg_saccade_grey, 2)},
-            {"KPI": "Avgerage Fixation Duration", "color": f"{round(avg_fixation_duration_color, 2)} sec",
-             "greyscale": f"{round(avg_fixation_duration_grey, 2)} sec"}
+            {"KPI": "Avgerage Task Duration",
+                "color": f"{avg_task_color:.2f} sec.",
+                "greyscale": f"{avg_task_grey:.2f} sec."},
+            {"KPI": "Number of Fixation-Points",
+                "color": f"{fixation_points_color:,}".replace(',', "'"),
+                "greyscale": f"{fixation_points_grey:,}".replace(',', "'")},
+            {"KPI": "Avgerage Saccade Length",
+                "color": f"{avg_saccade_color:.2f}",
+                "greyscale": f"{avg_saccade_grey:.2f}"},
+            {"KPI": "Avgerage Fixation Duration",
+                "color": f"{avg_fixation_duration_color:.2f} sec.",
+                "greyscale": f"{avg_fixation_duration_grey:.2f} sec."}
         ],
         style_cell={
             'textAlign': 'left',
@@ -404,8 +423,7 @@ def update_table_container(selected_city):
                 'minWidth': '60px', 'maxWidth': '60px',},
         ]
     )
-    else:
-        return html.Div("Please select a city map to view related KPI data.", style={'fontSize': '12px', 'fontFamily': 'Arial', 'fontStyle': 'italic', 'margin-left': '17px'})
+
 
 """
 -----------------------------------------------------------------------------------------
@@ -479,10 +497,19 @@ def update_scatter_plot_color(selected_city, selected_users, range_slider_value,
                          color='user',
                          color_discrete_map=color_map,
                          labels={
-                             'NormalizedPointX': 'X Coordinate',
-                             'NormalizedPointY': 'Y Coordinate',
-                             'FixationDuration': 'Duration (ms)'
-                         })
+                             'MappedFixationPointX': 'X Coordinate',
+                             'MappedFixationPointY': 'Y Coordinate',
+                             'FixationDuration': 'FixationDuration (ms)',
+                             'FixationDuration_aggregated': 'Task Duration (sec)'
+                         },
+                         hover_data = {
+                                'user': True,
+                                'MappedFixationPointX': True,
+                                'MappedFixationPointY': True,
+                                'FixationDuration': True,
+                                'FixationDuration_aggregated': True
+                            }
+                         )
 
         # Add line traces for each user
         for user in filtered_df['user'].unique():
@@ -493,7 +520,8 @@ def update_scatter_plot_color(selected_city, selected_users, range_slider_value,
                     y=user_df['NormalizedPointY'],
                     mode='lines',
                     line=dict(width=2, color=color_map[user]),
-                    name=f"Scanpath for {user}"
+                    name=f"Scanpath for {user}",
+                    hoverinfo='skip'
                 )
             )
         fig.update_xaxes(
@@ -526,8 +554,8 @@ def update_scatter_plot_color(selected_city, selected_users, range_slider_value,
         )
 
         fig.update_layout(
-            plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
-            paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
+            plot_bgcolor='rgba(0, 0, 0, 0)',
+            paper_bgcolor='rgba(0, 0, 0, 0)',
             xaxis_title=None,
             yaxis_title=None,
             title={
@@ -538,7 +566,8 @@ def update_scatter_plot_color(selected_city, selected_users, range_slider_value,
                     'color': title_color }
             },
             margin=dict(l=0, r=5, t=40, b=5),
-            showlegend=False)
+            showlegend=False,
+            height=425)
         return fig
 
     else:
@@ -549,22 +578,27 @@ def update_scatter_plot_color(selected_city, selected_users, range_slider_value,
         fig.update_layout(
             plot_bgcolor='rgba(0, 0, 0, 0)',
             paper_bgcolor='rgba(0, 0, 0, 0)',
-            title={'text': f"<i>Please select a city to view data<i>.",
+            title={'text': f"No City Map selected.<br><br>"
+                           f"To display the <b>Scan Path Visualization</b> on a specific map,<br>"
+                           f"please select a city from the dropdown on the left.",
                    'y': 0.6,
                    'x': 0.5,
                    'xanchor': 'center',
-                   'yanchor': 'top',
+                   'yanchor': 'middle',
                    'font': dict(
                        size=14,
                        color=title_color,
                        family='Arial, sans-serif')},
             showlegend=False,
-            margin=dict(l=0, r=5, t=40, b=5))
+            margin=dict(l=0, r=5, t=40, b=5),
+            height=425
+        )
 
         fig.update_xaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
         fig.update_yaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
 
         return fig
+
 
 """
 -----------------------------------------------------------------------------------------
@@ -631,8 +665,17 @@ def update_scatter_plot_grey(selected_city, selected_users, range_slider_value, 
                          labels={
                              'MappedFixationPointX': 'X Coordinate',
                              'MappedFixationPointY': 'Y Coordinate',
-                             'FixationDuration': 'Duration (ms)'
-                         })
+                             'FixationDuration': 'FixationDuration (ms)',
+                             'FixationDuration_aggregated': 'Task Duration (sec)'
+                         },
+                         hover_data = {
+                                'user': True,
+                                'MappedFixationPointX': True,
+                                'MappedFixationPointY': True,
+                                'FixationDuration': True,
+                                'FixationDuration_aggregated': True
+                            }
+        )
 
         # Add line traces for each user
         for user in filtered_df['user'].unique():
@@ -643,7 +686,8 @@ def update_scatter_plot_grey(selected_city, selected_users, range_slider_value, 
                     y=user_df['MappedFixationPointY'],
                     mode='lines',
                     line=dict(width=2, color=color_map[user]),
-                    name=f"Scanpath for {user}"
+                    name=f"Scanpath for {user}",
+                    hoverinfo='skip'
                 )
             )
 
@@ -690,32 +734,82 @@ def update_scatter_plot_grey(selected_city, selected_users, range_slider_value, 
                     'color': title_color }
             },
             margin=dict(l=0, r=5, t=40, b=5),
-            showlegend=False)
+            showlegend=False,
+            height=425)
         return fig
 
     else:
-        fig = px.scatter()
-
         title_color = 'black' if current_theme == 'light' else 'white'
+        cities = [
+            {"name": "Antwerpen", "lat": 51.2194, "lon": 4.4025},
+            {"name": "Berlin", "lat": 52.5200, "lon": 13.4050},
+            {"name": "Bordeaux", "lat": 44.8378, "lon": -0.5792},
+            {"name": "Köln", "lat": 50.9375, "lon": 6.9603},
+            {"name": "Frankfurt", "lat": 50.1109, "lon": 8.6821},
+            {"name": "Hamburg", "lat": 53.5511, "lon": 9.9937},
+            {"name": "Moskau", "lat": 55.7558, "lon": 37.6173},
+            {"name": "Riga", "lat": 56.9496, "lon": 24.1052},
+            {"name": "Tokyo", "lat": 35.6895, "lon": 139.6917},
+            {"name": "Barcelona", "lat": 41.3851, "lon": 2.1734},
+            {"name": "Bologna", "lat": 44.4949, "lon": 11.3426},
+            {"name": "Brüssel", "lat": 50.8503, "lon": 4.3517},
+            {"name": "Budapest", "lat": 47.4979, "lon": 19.0402},
+            {"name": "Düsseldorf", "lat": 51.2277, "lon": 6.7735},
+            {"name": "Göteborg", "lat": 57.7089, "lon": 11.9746},
+            {"name": "Hong-Kong", "lat": 22.3193, "lon": 114.1694},
+            {"name": "Krakau", "lat": 50.0647, "lon": 19.9450},
+            {"name": "Ljubljana", "lat": 46.0569, "lon": 14.5058},
+            {"name": "New-York", "lat": 40.7128, "lon": -74.0060},
+            {"name": "Paris", "lat": 48.8566, "lon": 2.3522},
+            {"name": "Pisa", "lat": 43.7228, "lon": 10.4017},
+            {"name": "Venedig", "lat": 45.4408, "lon": 12.3155},
+            {"name": "Warschau", "lat": 52.2297, "lon": 21.0122},
+            {"name": "Zürich", "lat": 47.3769, "lon": 8.5417}
+        ]
+
+        lats = [city["lat"] for city in cities]
+        lons = [city["lon"] for city in cities]
+        names = [city["name"] for city in cities]
+
+        fig = go.Figure()
+
+        fig.add_trace(go.Scattergeo(
+            locationmode='ISO-3',
+            lon=lons,
+            lat=lats,
+            text=names,
+            mode='markers',
+            marker=dict(
+                size=6,
+                symbol='circle',
+                color='blue'
+            ),
+            textposition='top right',
+            hoverinfo='text'
+        ))
 
         fig.update_layout(
+            title=dict(
+                text='<br><br><b>Available City Maps</b><br>'
+                     '(zoom out to see cities outside Europe)',
+                font=dict(size=12, family='Arial, sans-serif', color=title_color),
+            ),
             plot_bgcolor='rgba(0, 0, 0, 0)',
             paper_bgcolor='rgba(0, 0, 0, 0)',
-            title={'text': f"<i>Please select a city to view data<i>.",
-                   'y': 0.6,
-                   'x': 0.5,
-                   'xanchor': 'center',
-                   'yanchor': 'top',
-                   'font': dict(
-                       size=14,
-                       color=title_color,
-                       family='Arial, sans-serif')},
-            showlegend=False,
-            margin=dict(l=0, r=5, t=40, b=5))
-
-        fig.update_xaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
-        fig.update_yaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
-
+            geo=dict(
+                projection_type='natural earth',
+                showland=True,
+                landcolor='lightgray',
+                coastlinecolor='darkgray',
+                showcoastlines=True,
+                showcountries=True,
+                countrycolor='darkgray',
+                lonaxis=dict(range=[-10, 40]),  # Longitude range for Europe
+                lataxis=dict(range=[35, 65])  # Latitude range for Europe
+            ),
+            margin=dict(l=5, r=5, t=100, b=5),
+            height=424
+        )
         return fig
 
 """
@@ -778,7 +872,7 @@ def update_heatmap_color(selected_city, selected_users, range_slider_value, curr
             contours_coloring="fill",
             line=dict(
                 smoothing=1.3,
-                color='rgba(0, 0, 0, 0)'  # Set contour line color to transparent
+                color='rgba(0, 0, 0, 0)'
             ),
             colorscale=[
                 [0.0, "rgba(0, 128, 0, 0)"],  # Green, but transparent
@@ -820,8 +914,8 @@ def update_heatmap_color(selected_city, selected_users, range_slider_value, curr
         )
 
         fig.update_layout(
-            plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
-            paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
+            plot_bgcolor='rgba(0, 0, 0, 0)',
+            paper_bgcolor='rgba(0, 0, 0, 0)',
             xaxis_title=None,
             yaxis_title=None,
             title={
@@ -832,7 +926,8 @@ def update_heatmap_color(selected_city, selected_users, range_slider_value, curr
                     'color': title_color}
             },
             margin=dict(l=0, r=5, t=40, b=5),
-            showlegend=False)
+            showlegend=False,
+            height=425)
         return fig
 
     else:
@@ -844,18 +939,22 @@ def update_heatmap_color(selected_city, selected_users, range_slider_value, curr
             plot_bgcolor='rgba(0, 0, 0, 0)',
             paper_bgcolor='rgba(0, 0, 0, 0)',
             title={
-                'text': "<i>Please select a city to view data<i>.",
+                'text': f"No City Map selected.<br><br>"
+                        f"To display the <b>Density Visualization</b> on a specific map,<br>"
+                        f"please select a city from the dropdown on the left.",
                 'y': 0.6,
                 'x': 0.5,
                 'xanchor': 'center',
-                'yanchor': 'top',
+                'yanchor': 'middle',
                 'font': {
                     'size': 14,
                     'color': title_color,
                     'family': 'Arial, sans-serif'
                 }},
             showlegend=False,
-            margin=dict(l=0, r=5, t=40, b=5))
+            margin=dict(l=0, r=5, t=40, b=5),
+            height=425,
+        )
 
         fig.update_xaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
         fig.update_yaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
@@ -954,8 +1053,8 @@ def update_heatmap_grey(selected_city, selected_users, range_slider_value, curre
         )
 
         fig.update_layout(
-            plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
-            paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
+            plot_bgcolor='rgba(0, 0, 0, 0)',
+            paper_bgcolor='rgba(0, 0, 0, 0)',
             xaxis_title=None,
             yaxis_title=None,
             title={
@@ -966,33 +1065,82 @@ def update_heatmap_grey(selected_city, selected_users, range_slider_value, curre
                     'color': title_color}
             },
             margin=dict(l=0, r=5, t=40, b=5),
-            showlegend=False)
+            showlegend=False,
+            height=425,)
         return fig
 
-    else:
-        fig = px.scatter()
 
+    else:
         title_color = 'black' if current_theme == 'light' else 'white'
 
+        cities = [
+            {"name": "Antwerpen", "lat": 51.2194, "lon": 4.4025},
+            {"name": "Berlin", "lat": 52.5200, "lon": 13.4050},
+            {"name": "Bordeaux", "lat": 44.8378, "lon": -0.5792},
+            {"name": "Köln", "lat": 50.9375, "lon": 6.9603},
+            {"name": "Frankfurt", "lat": 50.1109, "lon": 8.6821},
+            {"name": "Hamburg", "lat": 53.5511, "lon": 9.9937},
+            {"name": "Moskau", "lat": 55.7558, "lon": 37.6173},
+            {"name": "Riga", "lat": 56.9496, "lon": 24.1052},
+            {"name": "Tokyo", "lat": 35.6895, "lon": 139.6917},
+            {"name": "Barcelona", "lat": 41.3851, "lon": 2.1734},
+            {"name": "Bologna", "lat": 44.4949, "lon": 11.3426},
+            {"name": "Brüssel", "lat": 50.8503, "lon": 4.3517},
+            {"name": "Budapest", "lat": 47.4979, "lon": 19.0402},
+            {"name": "Düsseldorf", "lat": 51.2277, "lon": 6.7735},
+            {"name": "Göteborg", "lat": 57.7089, "lon": 11.9746},
+            {"name": "Hong-Kong", "lat": 22.3193, "lon": 114.1694},
+            {"name": "Krakau", "lat": 50.0647, "lon": 19.9450},
+            {"name": "Ljubljana", "lat": 46.0569, "lon": 14.5058},
+            {"name": "New-York", "lat": 40.7128, "lon": -74.0060},
+            {"name": "Paris", "lat": 48.8566, "lon": 2.3522},
+            {"name": "Pisa", "lat": 43.7228, "lon": 10.4017},
+            {"name": "Venedig", "lat": 45.4408, "lon": 12.3155},
+            {"name": "Warschau", "lat": 52.2297, "lon": 21.0122},
+            {"name": "Zürich", "lat": 47.3769, "lon": 8.5417}
+        ]
+
+        lats = [city["lat"] for city in cities]
+        lons = [city["lon"] for city in cities]
+        names = [city["name"] for city in cities]
+        fig = go.Figure()
+        fig.add_trace(go.Scattergeo(
+            locationmode='ISO-3',
+            lon=lons,
+            lat=lats,
+            text=names,
+            mode='markers',
+            marker=dict(
+                size=6,
+                symbol='circle',
+                color='blue'
+            ),
+            textposition='top right',
+            hoverinfo='text'
+        ))
+
         fig.update_layout(
+            title=dict(
+                text='<br><br><b>Available City Maps</b><br>'
+                     '(zoom out to see cities outside Europe)',
+                font=dict(size=12, family='Arial, sans-serif', color=title_color),
+            ),
             plot_bgcolor='rgba(0, 0, 0, 0)',
             paper_bgcolor='rgba(0, 0, 0, 0)',
-            title={
-                'text': "<i>Please select a city to view data<i>.",
-                'y': 0.6,
-                'x': 0.5,
-                'xanchor': 'center',
-                'yanchor': 'top',
-                'font': {
-                    'size': 14,
-                    'color': title_color,
-                    'family': 'Arial, sans-serif'
-                }},
-            showlegend=False,
-            margin=dict(l=0, r=5, t=40, b=5))
-
-        fig.update_xaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
-        fig.update_yaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
+            geo=dict(
+                projection_type='natural earth',
+                showland=True,
+                landcolor='lightgray',
+                coastlinecolor='darkgray',
+                showcoastlines=True,
+                showcountries=True,
+                countrycolor='darkgray',
+                lonaxis=dict(range=[-10, 40]),  # Longitude range for Europe
+                lataxis=dict(range=[35, 65])  # Latitude range for Europe
+            ),
+            margin=dict(l=5, r=5, t=100, b=5),
+            height=424
+        )
 
         return fig
 
@@ -1004,46 +1152,78 @@ Definition of Box-Plot "Task Duration" (Distribution of Task Duration (A-B) per 
 @app.callback(
     Output('box_task_duration', 'figure'),
     [Input('active-button', 'data'),
-     Input('city_dropdown', 'value'),
      Input('current_theme', 'data')]
 )
-def update_box_plot_task_duration(active_button, selected_city, current_theme):
-    if active_button == 'default_viz' and selected_city is None:
-        city_order = df['CityMap'].sort_values().unique().tolist()
+def update_box_plot_task_duration(active_button, current_theme):
+    if active_button == 'default_viz':
+        city_order = sorted(df['City'].unique().tolist())
 
         # Set title color based on theme
         title_color = 'black' if current_theme == 'light' else 'white'
 
+        # Calculate medians for annotations
+        medians = df.groupby(['City', 'description'])['FixationDuration_aggregated'].median().reset_index()
+        max_fixation_duration = df['FixationDuration_aggregated'].max()
+
         fig = px.box(df,
                      x='FixationDuration_aggregated',
                      y='City',
-                     # points='outliers',
+                     points=False,
                      color='description',
-                     boxmode='overlay',
+                     boxmode='group',
                      category_orders={'City': city_order},
                      color_discrete_map={
                          'color': 'blue',
                          'grey': 'lightgrey'},
                      labels={'FixationDuration_aggregated': 'Task Duration [sec.]',
                              'City': '',
-                             'description': 'Map Type'})
+                             'description': ''})
 
-        fig.update_traces(marker=dict(size=5), line=dict(width=2.0))
+        fig.update_traces(marker=dict(size=8), line=dict(width=2.0))
 
-        fig.update_xaxes(showgrid=False,
+        fig.update_xaxes(dtick=100,
                          showticklabels=True,
                          tickfont=dict(color=title_color, size=11, family='Arial, sans-serif'),
-                         domain=[0, 1])
+                         showgrid=False,
+                         showline=True,
+                         zeroline=False,
+                         linecolor=title_color,
+                         linewidth=0.2)
 
         fig.update_yaxes(dtick=1,
                          showgrid=False,
                          showticklabels=True,
-                         tickfont=dict(color=title_color, size=11, family='Arial, sans-serif'),
-                         domain=[0, 1])
+                         zeroline=False,
+                         showline=False,
+                         tickfont=dict(color=title_color, size=11, family='Arial, sans-serif'))
+
+        # Add median text annotations aligned along the right edge
+        x_offsets = {
+            'color': max_fixation_duration * 1.05,  # Slightly outside the max x value
+            'grey': max_fixation_duration * 1.15  # Further outside to avoid overlap
+        }
+
+        for description in medians['description'].unique():
+            median_data = medians[medians['description'] == description]
+            for _, row in median_data.iterrows():
+                x_value = x_offsets[description]  # Adjusted position
+                y_value = row['City']
+                color = 'grey' if description == 'grey' else 'blue'
+
+                fig.add_annotation(
+                    x=x_value,
+                    y=y_value,
+                    text=f'{row["FixationDuration_aggregated"]:.2f}',
+                    showarrow=False,
+                    xanchor='left',
+                    yanchor='middle',
+                    font=dict(size=9, color=color)
+                )
 
         fig.update_layout(
-            plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
-            paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
+            height=525,
+            plot_bgcolor='rgba(0, 0, 0, 0)',
+            paper_bgcolor='rgba(0, 0, 0, 0)',
             yaxis_title=None,
             xaxis_title={
                 'text': 'Task Duration [sec.]',
@@ -1053,44 +1233,36 @@ def update_box_plot_task_duration(active_button, selected_city, current_theme):
                     'color': title_color}
             },
             title={
-                'text': f'<b>Distribution of Task-Duration in sec.</b>',
+                'text': f'<b>Distribution of Task-Duration</b>'
+                        f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                        f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                        f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                        f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                        f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                        f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>Median:</i>',
                 'font': {
                     'size': 12,
                     'family': 'Arial, sans-serif',
                     'color': title_color}
             },
             margin=dict(l=5, r=5, t=40, b=5),
-            showlegend=False)
+            legend=dict(
+                font=dict(color=title_color, size=10, family='Arial, sans-serif'),
+                bgcolor='rgba(0, 0, 0, 0)',
+                orientation='h',
+                yanchor='top',
+                y=-0.04,
+                xanchor='left',
+                x=-0.2
+            ),
+            showlegend=True,
+            )
 
         return fig
 
     else:
         fig = px.scatter()
-
-        title_color = 'black' if current_theme == 'light' else 'white'
-
-        fig.update_layout(
-        plot_bgcolor='rgba(0, 0, 0, 0)',
-        paper_bgcolor='rgba(0, 0, 0, 0)',
-        title={
-            'text': "<i>Please remove city selection to view overall Boxplot data<br> "
-                    " or chose another type of visualization.<i>",
-            'y': 0.6,
-            'x': 0.5,
-            'xanchor': 'center',
-            'yanchor': 'top',
-            'font': {
-                'size': 14,
-                'color': title_color,
-                'family': 'Arial, sans-serif'
-            }},
-        showlegend=False,
-        margin=dict(l=0, r=5, t=40, b=5))
-
-        fig.update_xaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
-        fig.update_yaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
-
-    return fig
+        return fig
 
 """
 -----------------------------------------------------------------------------------------
@@ -1100,93 +1272,116 @@ Definition of Box-Plot "Average Fixation Duration" (Distribution of Avg. Fixatio
 @app.callback(
     Output('box_avg_fix_duration', 'figure'),
     [Input('active-button', 'data'),
-     Input('city_dropdown', 'value'),
      Input('current_theme', 'data')]
 )
-def update_box_plot_avg_fix_duration(active_button, selected_city, current_theme):
-    if active_button == 'default_viz' and selected_city is None:
-        city_order = df['CityMap'].sort_values().unique().tolist()
+def update_box_plot_avg_fix_duration(active_button, current_theme):
+    if active_button == 'default_viz':
+        city_order = sorted(df['City'].unique().tolist())
 
         # Set title color based on theme
         title_color = 'black' if current_theme == 'light' else 'white'
 
+        # Calculate medians for annotations
+        medians = df.groupby(['City', 'description'])['FixationDuration_avg'].median().reset_index()
+        max_fixation_duration = df['FixationDuration_avg'].max()
+
         fig = px.box(df,
                      x='FixationDuration_avg',
                      y='City',
-                     # points='outliers',
+                     points=False,
                      color='description',
-                     boxmode='overlay',
+                     boxmode='group',
                      category_orders={'City': city_order},
                      color_discrete_map={
                          'color': 'blue',
                          'grey': 'lightgrey'},
-                     labels={'FixationDuration_aggregated': 'Average Fixation Duration [sec.]',
+                     labels={'FixationDuration_avg': 'Avg. Fixation Duration [sec.]',
                              'City': '',
-                             'description': 'Map Type'})
+                             'description': ''})
 
-        fig.update_traces(marker=dict(size=5), line=dict(width=2.0))
+        fig.update_traces(marker=dict(size=8), line=dict(width=2.0))
 
-        fig.update_xaxes(showgrid=False,
+        fig.update_xaxes(dtick=0.2,
                          showticklabels=True,
                          tickfont=dict(color=title_color, size=11, family='Arial, sans-serif'),
-                         domain=[0, 1])
+                         showgrid=False,
+                         showline=True,
+                         zeroline=False,
+                         linecolor=title_color,
+                         linewidth=0.2)
 
         fig.update_yaxes(dtick=1,
                          showgrid=False,
                          showticklabels=True,
-                         tickfont=dict(color=title_color, size=11, family='Arial, sans-serif'),
-                         domain=[0, 1])
+                         zeroline=False,
+                         showline=False,
+                         tickfont=dict(color=title_color, size=11, family='Arial, sans-serif')
+                         )
+
+        # Add median text annotations aligned along the right edge
+        x_offsets = {
+            'color': max_fixation_duration * 1.05,  # Slightly outside the max x value
+            'grey': max_fixation_duration * 1.15  # Further outside to avoid overlap
+        }
+
+        for description in medians['description'].unique():
+            median_data = medians[medians['description'] == description]
+            for _, row in median_data.iterrows():
+                x_value = x_offsets[description]  # Adjusted position
+                y_value = row['City']
+                color = 'grey' if description == 'grey' else 'blue'
+
+                fig.add_annotation(
+                    x=x_value,
+                    y=y_value,
+                    text=f'{row["FixationDuration_avg"]:.2f}',
+                    showarrow=False,
+                    xanchor='left',
+                    yanchor='middle',
+                    font=dict(size=9, color=color)
+                )
 
         fig.update_layout(
-            plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
-            paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
+            height=525,
+            plot_bgcolor='rgba(0, 0, 0, 0)',
+            paper_bgcolor='rgba(0, 0, 0, 0)',
             yaxis_title=None,
             xaxis_title={
-                'text': 'Average Fiation Duration [sec.]',
+                'text': 'Avg. Fixation Duration [sec.]',
                 'font': {
                     'size': 11,
                     'family': 'Arial, sans-serif',
                     'color': title_color}
             },
             title={
-                'text': f'<b>Distribution of average Fixation Duration in sec.</b>',
+                'text': f'<b>Distribution of Average Fixation Duration</b>'
+                        f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                        f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                        f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                        f'&nbsp;&nbsp;<i>Median:</i>',
                 'font': {
                     'size': 12,
                     'family': 'Arial, sans-serif',
                     'color': title_color}
             },
             margin=dict(l=5, r=5, t=40, b=5),
-            showlegend=False)
+            legend=dict(
+                font=dict(color=title_color, size=10, family='Arial, sans-serif'),
+                bgcolor='rgba(0, 0, 0, 0)',
+                orientation='h',
+                yanchor='top',
+                y=-0.04,
+                xanchor='left',
+                x=-0.2
+            ),
+            showlegend=True,
+        )
 
         return fig
 
     else:
         fig = px.scatter()
-
-        title_color = 'black' if current_theme == 'light' else 'white'
-
-        fig.update_layout(
-        plot_bgcolor='rgba(0, 0, 0, 0)',
-        paper_bgcolor='rgba(0, 0, 0, 0)',
-        title={
-            'text': "<i>Please remove city selection to view overall Boxplot data<br>"
-                    " or chose another type of visualization.<i>",
-            'y': 0.6,
-            'x': 0.5,
-            'xanchor': 'center',
-            'yanchor': 'top',
-            'font': {
-                'size': 14,
-                'color': title_color,
-                'family': 'Arial, sans-serif'
-            }},
-        showlegend=False,
-        margin=dict(l=0, r=5, t=40, b=5))
-
-        fig.update_xaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
-        fig.update_yaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
-
-    return fig
+        return fig
 
 """
 -----------------------------------------------------------------------------------------
@@ -1195,94 +1390,410 @@ Definition of Histogram (Distribution of Task Duration per selected city map)
 """
 @app.callback(
     Output('hist_taskduration', 'figure'),
-    [Input('city_dropdown', 'value'),
+     [Input('city_dropdown', 'value'),
      Input('current_theme', 'data')]
 )
 def update_histogram_task_duration(selected_city, current_theme):
+    title_color = 'black' if current_theme == 'light' else 'white'
+
     if selected_city:
-        # Filter data based on the selected city
-        filtered_df = df[(df['CityMap'] == selected_city)]
-
-        # Remove duplicate values of FixationDuration_aggregated for each user
+        filtered_df = df[df['CityMap'] == selected_city]
         unique_users_df = filtered_df.drop_duplicates(subset=['user', 'FixationDuration_aggregated'], keep='first')
+        titel = (f'<b>Distribution of Task Duration in {selected_city}</b><br><br>'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;color'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;grey')
 
-        # Set title color based on theme
-        title_color = 'black' if current_theme == 'light' else 'white'
-
-        # Create histogram showing task duration per city
         fig = px.histogram(unique_users_df,
                            x="FixationDuration_aggregated",
                            color="description",
+                           facet_col='description',
+                           category_orders={"description": ["color", "grey"]},
                            color_discrete_map={
                                'color': 'blue',
                                'grey': 'lightgrey'},
-                           #marginal="rug"
-                           )
+                           nbins=20,
+                           labels={
+                               "FixationDuration_aggregated": ""
+                           })
 
-        fig.update_xaxes(showgrid=False,
-                         showticklabels=True,
-                         tickfont=dict(color= title_color, size=11, family='Arial, sans-serif'),
-                         domain=[0, 1])
+    else:
+        unique_users_df = df.drop_duplicates(subset=['user', 'CityMap', 'FixationDuration_aggregated'], keep='first')
+        titel = (f'<b>Distribution of Task Duration in all cities</b><br><br>'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;color'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                 f'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;grey')
 
-        fig.update_yaxes(showgrid=False,
-                         showticklabels=False,
-                         tickfont=dict(color=title_color, size=11, family='Arial, sans-serif'),
-                         domain=[0, 1])
+        fig = px.histogram(unique_users_df,
+                           x="FixationDuration_aggregated",
+                           color="description",
+                           facet_col='description',
+                           category_orders={"description": ["color", "grey"]},
+                           color_discrete_map={
+                               'color': 'blue',
+                               'grey': 'lightgrey'},
+                           nbins=50,
+                           labels={
+                               "FixationDuration_aggregated": ""
+                           })
 
-        fig.update_layout(
-            plot_bgcolor='rgba(0, 0, 0, 0)',  # Set background color to transparent
-            paper_bgcolor='rgba(0, 0, 0, 0)',  # Set paper color to transparent
-            yaxis_title=None,
-            xaxis_title={
-                'text': f'{selected_city} [sec.]',
-                'font': {
-                    'size': 11,
-                    'family': 'Arial, sans-serif',
-                    'color': title_color}
-            },
-            # title={
-            #     'text': f'<b>in {selected_city}</b>',
-            #     'font': {
-            #         'size': 12,
-            #         'family': 'Arial, sans-serif',
-            #         'color': title_color}
-            # },
-            margin=dict(l=5, r=5, t=5, b=5),
-            showlegend=True,
-            legend_title_text='',
-            legend=dict(
-                font=dict(
-                    color=title_color,
-                    size=11,
-                    family='Arial, sans-serif'))
+    fig.update_xaxes(showgrid=False,
+                     showticklabels=True,
+                     tickfont=dict(color=title_color, size=11, family='Arial, sans-serif'),
+                     showline=True,
+                     linecolor=title_color,
+                     zeroline=False)
+
+    fig.update_yaxes(showgrid=False,
+                     showticklabels=False,
+                     tickfont=dict(color=title_color, size=11, family='Arial, sans-serif'),
+                     showline=True,
+                     linecolor=title_color,
+                     zeroline=False)
+
+    fig.update_layout(
+        plot_bgcolor='rgba(0, 0, 0, 0)',
+        paper_bgcolor='rgba(0, 0, 0, 0)',
+        yaxis_title=None,
+        xaxis_title=dict(
+            text='[sec.]',
+            font=dict(size=10, family='Arial, sans-serif', color=title_color)),
+        margin=dict(l=1, r=5, t=30, b=0),
+        showlegend=False,
+        title=dict(
+            text=titel,
+            font=dict(size=12, family='Arial, sans-serif', color=title_color)
+        ),
+        legend_title_text='',
+        height=137)
+
+    fig.update_traces(
+        marker_line_color=title_color,
+        marker_line_width=1
+    )
+
+    fig.for_each_annotation(lambda a: a.update(text=''))
+    fig.for_each_xaxis(lambda axis: axis.update(
+        title_text='[sec.]',
+        title_font=dict(size=10, family='Arial, sans-serif', color=title_color))
+                       )
+    return fig
+
+"""
+-----------------------------------------------------------------------------------------
+Section 13:
+Definition of Scatter Plot Color (Correlation between Fixation Duration and Saccade Length)
+"""
+@app.callback(
+    Output('scatter_correlation_color', 'figure'),
+    [Input('active-button', 'data'),
+     Input('city_dropdown', 'value'),
+     Input('current_theme', 'data')]
+)
+def update_scatter_correlation_color(active_button, selected_city, current_theme):
+    if active_button == 'scatter_plot':
+        # Set title color based on theme
+        title_color = 'black' if current_theme == 'light' else 'white'
+
+        if selected_city:
+            filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == 'color')]
+            title = (f'<b>Color Map {selected_city}:<br>'
+                     f'Correlation between Saccade Length and Fixation Duration</b>')
+
+            # Drop data where 'SaccadeLength' is null
+            filtered_df = filtered_df.dropna(subset=['FixationDuration', 'SaccadeLength'])
+
+            # Convert FixationDuration to seconds
+            filtered_df['FixationDuration'] = filtered_df['FixationDuration'] / 1000
+
+            min_x = filtered_df['FixationDuration'].min()
+            max_x = filtered_df['FixationDuration'].max()
+            min_y = filtered_df['SaccadeLength'].min()
+            max_y = filtered_df['SaccadeLength'].max()
+
+            color_sequence = ['rgba(94, 204, 244, 1)', 'rgba(0, 0, 255, 1)']
+
+            fig = px.scatter(filtered_df,
+                             x='FixationDuration',
+                             y='SaccadeLength',
+                             category_orders={'TaskDurationCategory': ['<10 sec.', '>=10 sec.']},
+                             color='TaskDurationCategory',
+                             color_discrete_sequence=color_sequence,
+                             labels={'FixationDuration': 'Fixation Duration [sec.]',
+                                     'SaccadeLength': 'Saccade Length',
+                                     'TaskDurationCategory': 'Task Duration Category'})
+
+            fig.update_traces(marker=dict(size=9,
+                                          opacity=0.8,
+                                          line=dict(width=0.3, color=title_color))
+                              )
+
+            fig.update_layout(
+                plot_bgcolor='rgba(0, 0, 0, 0)',
+                paper_bgcolor='rgba(0, 0, 0, 0)',
+                margin=dict(l=50, r=30, t=50, b=50),
+                height=525,
+                title=dict(text=title,
+                           font=dict(size=12, family='Arial, sans-serif', color=title_color)),
+                yaxis_title=dict(text='Saccade Length',
+                                 font=dict(size=11, family='Arial, sans-serif', color=title_color),
+                                 standoff=0),
+                xaxis_title=dict(text='Fixation Duration [sec.]',
+                                 font=dict(size=11, family='Arial, sans-serif', color=title_color)),
+                legend_title=dict(text='Task Duration Category',
+                                  font=dict(size=10, family='Arial, sans-serif', color=title_color)),
+                legend=dict(orientation='h',
+                            font=dict(size=10, family='Arial, sans-serif', color=title_color))
             )
 
-        return fig
+            fig.update_xaxes(range=[min_x-0.07, max_x+0.09],
+                             showgrid=False,
+                             showticklabels=True,
+                             tickfont=dict(color=title_color, size=10, family='Arial, sans-serif'),
+                             showline=True,
+                             zeroline=False,
+                             linecolor=title_color,
+                             zerolinewidth=0.2)
+
+            fig.update_yaxes(range=[min_y-20, max_y+20],
+                             showgrid=False,
+                             showticklabels=True,
+                             tickfont=dict(color=title_color, size=10, family='Arial, sans-serif'),
+                             showline=True,
+                             zeroline=False,
+                             linecolor=title_color,
+                             linewidth=0.2)
+
+            return fig
+
+        else:
+            filtered_df = df[df['description'] == 'color']
+
+            # Drop data where 'SaccadeLength' is null
+            filtered_df = filtered_df.dropna(subset=['FixationDuration', 'SaccadeLength'])
+
+            # Convert FixationDuration to seconds
+            filtered_df['FixationDuration'] = filtered_df['FixationDuration'] / 1000
+
+            # Create a histogram2dcontour plot
+            fig = go.Figure(go.Histogram2dContour(
+                x=filtered_df['FixationDuration'],
+                y=filtered_df['SaccadeLength'],
+                coloraxis='coloraxis')
+            )
+
+            fig.update_layout(
+                coloraxis=dict(
+                    colorscale='Blues',
+                    colorbar=dict(
+                        title='Scatter Density',
+                        tickfont=dict(color=title_color, size=10, family='Arial, sans-serif'),
+                        titlefont=dict(color=title_color, size=10, family='Arial, sans-serif')))
+            )
+
+            fig.update_layout(
+                plot_bgcolor='rgba(0, 0, 0, 0)',
+                paper_bgcolor='rgba(0, 0, 0, 0)',
+                margin=dict(l=50, r=30, t=50, b=50),
+                height=525,
+                title=dict(text=f'<b>Color Maps of all cities:<br>'
+                           f'Correlation between Saccade Length and Fixation Duration</b>',
+                           font=dict(size=12, family='Arial, sans-serif', color=title_color)),
+                xaxis_title=dict(text='Fixation Duration [sec.]',
+                                 font=dict(size=11, family='Arial, sans-serif', color=title_color)),
+                yaxis_title=dict(text='Saccade Length',
+                                 font=dict(size=11, family='Arial, sans-serif', color=title_color))
+            )
+
+            fig.update_xaxes(range=[0.07, 0.6],
+                             showgrid=False,
+                             showticklabels=True,
+                             tickfont=dict(color=title_color, size=10, family='Arial, sans-serif'),
+                             showline=False,
+                             zeroline=False,
+                             zerolinecolor=title_color,
+                             linecolor=title_color,
+                             zerolinewidth=0.2)
+
+            fig.update_yaxes(range= [0, 350],
+                             showgrid=False,
+                             showticklabels=True,
+                             tickfont=dict(color=title_color, size=10, family='Arial, sans-serif'),
+                             showline=False,
+                             zeroline=False,
+                             zerolinecolor=title_color,
+                             linecolor=title_color,
+                             zerolinewidth=0.2)
+
+            return fig
 
     else:
         fig = px.scatter()
+        return fig
 
+"""
+-----------------------------------------------------------------------------------------
+Section 14:
+Definition of Scatter Plot Grey (Correlation between Fixation Duration and Saccade Length)
+"""
+@app.callback(
+    Output('scatter_correlation_grey', 'figure'),
+    [Input('active-button', 'data'),
+     Input('city_dropdown', 'value'),
+    Input('current_theme', 'data')]
+)
+def update_scatter_correlation_grey(active_button, selected_city, current_theme):
+    if active_button == 'scatter_plot':
+        # Set title color based on theme
         title_color = 'black' if current_theme == 'light' else 'white'
 
-        fig.update_layout(
-            plot_bgcolor='rgba(0, 0, 0, 0)',
-            paper_bgcolor='rgba(0, 0, 0, 0)',
-            title={'text': f"<i>Please select a city map to view related data<i>.",
-                   #'y': 0.6,
-                   #'x': 0.5,
-                   'xanchor': 'left',
-                   'yanchor': 'top',
-                   'font': dict(
-                       size=12,
-                       color=title_color,
-                       family='Arial, sans-serif')},
-            showlegend=False,
-            margin=dict(l=0, r=5, t=40, b=5))
+        if selected_city:
+            filtered_df = df[(df['CityMap'] == selected_city) & (df['description'] == 'grey')]
+            title = (f'<b>Greyscale Map {selected_city}:<br>'
+                     f'Correlation between Saccade Length and Fixation Duration</b>')
 
-        fig.update_xaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
-        fig.update_yaxes(showgrid=False, zeroline=False, showline=False, showticklabels=False)
-    return fig
+            # Drop data where 'SaccadeLength' is null
+            filtered_df = filtered_df.dropna(subset=['FixationDuration', 'SaccadeLength'])
 
+            # Convert FixationDuration to seconds
+            filtered_df['FixationDuration'] = filtered_df['FixationDuration'] / 1000
+
+            min_x = filtered_df['FixationDuration'].min()
+            max_x = filtered_df['FixationDuration'].max()
+            min_y = filtered_df['SaccadeLength'].min()
+            max_y = filtered_df['SaccadeLength'].max()
+
+            color_sequence = ['#333333', 'grey']
+
+            fig = px.scatter(filtered_df,
+                             x='FixationDuration',
+                             y='SaccadeLength',
+                             category_orders={'TaskDurationCategory': ['<10 sec.', '>=10 sec.']},
+                             color='TaskDurationCategory',
+                             color_discrete_sequence=color_sequence,
+                             labels={'FixationDuration': 'Fixation Duration [sec.]',
+                                     'SaccadeLength': 'Saccade Length',
+                                     'TaskDurationCategory': 'Task Duration Category'})
+
+            fig.update_traces(marker=dict(size=9,
+                                          opacity=0.8,
+                                          line=dict(width=0.3, color=title_color))
+                              )
+
+            fig.update_layout(
+                plot_bgcolor='rgba(0, 0, 0, 0)',
+                paper_bgcolor='rgba(0, 0, 0, 0)',
+                margin=dict(l=50, r=30, t=50, b=50),
+                height=525,
+                title=dict(text=title,
+                           font=dict(size=12, family='Arial, sans-serif', color=title_color)),
+                yaxis_title=dict(text='Saccade Length',
+                                 font=dict(size=11, family='Arial, sans-serif', color=title_color),
+                                 standoff=0),
+                xaxis_title=dict(text='Fixation Duration [sec.]',
+                                 font=dict(size=11, family='Arial, sans-serif', color=title_color)),
+                legend_title=dict(text='Task Duration Category',
+                                  font=dict(size=10, family='Arial, sans-serif', color=title_color)),
+                legend=dict(orientation='h',
+                            font=dict(size=10, family='Arial, sans-serif', color=title_color))
+            )
+
+            fig.update_xaxes(range=[min_x-0.07, max_x+0.09],
+                             showgrid=False,
+                             showticklabels=True,
+                             tickfont=dict(color=title_color, size=10, family='Arial, sans-serif'),
+                             showline=True,
+                             zeroline=False,
+                             linecolor=title_color,
+                             zerolinewidth=0.2)
+
+            fig.update_yaxes(range=[min_y-20, max_y+20],
+                             showgrid=False,
+                             showticklabels=True,
+                             tickfont=dict(color=title_color, size=10, family='Arial, sans-serif'),
+                             showline=True,
+                             zeroline=False,
+                             linecolor=title_color,
+                             linewidth=0.2)
+
+            return fig
+
+        else:
+            filtered_df = df[df['description'] == 'grey']
+
+            # Drop data where 'SaccadeLength' is null
+            filtered_df = filtered_df.dropna(subset=['FixationDuration', 'SaccadeLength'])
+
+            # Convert FixationDuration to seconds
+            filtered_df['FixationDuration'] = filtered_df['FixationDuration'] / 1000
+
+            # Create a histogram2dcontour plot
+            fig = go.Figure(go.Histogram2dContour(
+                x=filtered_df['FixationDuration'],
+                y=filtered_df['SaccadeLength'],
+                coloraxis='coloraxis')
+            )
+
+            fig.update_layout(
+                coloraxis=dict(
+                    colorscale='Greys',
+                    colorbar=dict(
+                        title='Scatter Density',
+                        tickfont=dict(color=title_color, size=10, family='Arial, sans-serif'),
+                        titlefont=dict(color=title_color, size=10, family='Arial, sans-serif')))
+            )
+
+            fig.update_layout(
+                plot_bgcolor='rgba(0, 0, 0, 0)',
+                paper_bgcolor='rgba(0, 0, 0, 0)',
+                margin=dict(l=50, r=30, t=50, b=50),
+                height=525,
+                title=dict(text=f'<b>Greyscale Maps of all cities:<br>'
+                           f'Correlation between Saccade Length and Fixation Duration</b>',
+                           font=dict(size=12, family='Arial, sans-serif', color=title_color)),
+                xaxis_title=dict(text='Fixation Duration [sec.]',
+                                 font=dict(size=11, family='Arial, sans-serif', color=title_color)),
+                yaxis_title=dict(text='Saccade Length',
+                                 font=dict(size=11, family='Arial, sans-serif', color=title_color))
+            )
+
+            fig.update_xaxes(range=[0.07, 0.6],
+                             showgrid=False,
+                             showticklabels=True,
+                             tickfont=dict(color=title_color, size=10, family='Arial, sans-serif'),
+                             showline=False,
+                             zeroline=True,
+                             zerolinecolor=title_color,
+                             linecolor=title_color,
+                             zerolinewidth=0.2)
+
+            fig.update_yaxes(range= [0, 350],
+                             showgrid=False,
+                             showticklabels=True,
+                             tickfont=dict(color=title_color, size=10, family='Arial, sans-serif'),
+                             showline=False,
+                             zeroline=False,
+                             zerolinecolor=title_color,
+                             linecolor=title_color,
+                             zerolinewidth=0.2)
+
+            return fig
+
+    else:
+        fig = px.scatter()
+        return fig
 
 if __name__ == '__main__':
     app.run_server(debug=True)
