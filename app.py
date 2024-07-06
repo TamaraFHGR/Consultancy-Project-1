@@ -15,7 +15,7 @@ Section 1:
 Data Import and Preparation
 """
 # Data reading:
-data_path = 'assets/all_fixation_data_cleaned_up_3.csv'
+data_path = 'assets/all_fixation_data_cleaned_up.csv'
 df = pd.read_csv(data_path, sep=';')
 
 # Add "Task Duration in sec" (per User and Stimulus) to df:
@@ -148,10 +148,9 @@ app.layout = html.Div([
 """
 -----------------------------------------------------------------------------------------
 Section 3:
-Definition of active Viz-Button and Output-Section (based on active Viz-Type)
+Definition of Interaction Elements
 """
-
-#1 - Define and keep active button:
+# 3.1 - Define and keep active Viz-Button:
 @app.callback(
     [Output('default_viz', 'className'),
      Output('heat_map', 'className'),
@@ -176,7 +175,7 @@ def update_active_button(btn1, btn2, btn3, btn4, active_btn):
         button_id
     ]
 
-#2 - Update output and plot area based on active button:
+# 3.2 - Update Output Section and Plot Area based on active button, part I:
 @app.callback(
     Output('output-section', 'children'),
     Input('active-button', 'data')
@@ -193,6 +192,7 @@ def update_output(active_button):
     else:
         return ''
 
+# 3.3 - Update Output Section and Plot Area based on active button, part II:
 @app.callback(
     [Output('color_plot_area', 'children'),
      Output('grey_plot_area', 'children')],
@@ -230,7 +230,7 @@ def update_plot_area(visualization_type, selected_city):
             dcc.Graph(id='box_avg_fix_duration')
         ]
 
-#3 - Update Dropdown-Filters in plot area, based on selected city:
+# 3.4 - Update Dropdown-Filters in plot area, based on selected city:
 @app.callback(
     [Output('dropdown_user_color', 'options'),
      Output('dropdown_user_grey', 'options')],
@@ -250,9 +250,7 @@ def update_user_dropdowns(selected_city):
 
     return [[], []]
 
-#4 - Update Range-Slider in plot area, based on selected city and viz-type:
-
-#4.1 - Min, Max, Value and Marks for Range-Slider:
+# 3.5 - Update Range-Slider in plot area, based on selected city and viz-type:
 def to_int(value):
     return int(value) if not pd.isna(value) else 0
 
@@ -276,15 +274,15 @@ def update_range_slider(selected_city, description, buffer=5):
         marks = {i: f'{i}' for i in range(global_min, global_max_with_buffer + 1, max(1, (global_max_with_buffer - global_min) // 5))}
         return global_min, global_max_with_buffer, [global_min, global_max_with_buffer], marks
 
-#4.2 - Update color Slider:
+# 3.5.1 - Update color Slider:
 def update_range_slider_color(selected_city):
     return update_range_slider(selected_city, 'color')
 
-#4.3 - Update grey Slider:
+# 3.5.2 - Update grey Slider:
 def update_range_slider_grey(selected_city):
     return update_range_slider(selected_city, 'grey')
 
-#4.4 - Callback for both Slider:
+# 3.5.3 - Callback for both Slider:
 @app.callback(
     [Output('range_slider_color', 'min'),
      Output('range_slider_color', 'max'),
@@ -301,13 +299,7 @@ def update_range_sliders(selected_city):
     min_grey, max_grey, value_grey, marks_grey = update_range_slider_grey(selected_city)
     return min_color, max_color, value_color, marks_color, min_grey, max_grey, value_grey, marks_grey
 
-
-"""
------------------------------------------------------------------------------------------
-Section 4:
-Definition of Theme-Mode
-"""
-#1 - Update Theme-Mode based on selected theme:
+# 3.6 - Update Theme-Mode based on selected theme:
 @app.callback(
     [Output('page_content', 'className'),
      Output('current_theme', 'data')],
@@ -319,7 +311,7 @@ def update_theme_mode(theme):
     else:
         return 'dark_theme', 'dark'
 
-#2 - Update Dropdown-Classname based on selected theme:
+# 3.7 - Update Dropdown-Classname based on selected theme:
 @app.callback(
     Output('city_dropdown', 'className'),
     [Input('current_theme', 'data')]
@@ -332,8 +324,8 @@ def update_dropdown_classname(current_theme):
 
 """
 -----------------------------------------------------------------------------------------
-Section 5:
-Definition of KPI-Area
+Section 4:
+4.1 - Definition of KPI-Area
 """
 @app.callback(
     Output('table_container', 'children'),
@@ -427,8 +419,8 @@ def update_table_container(selected_city):
 
 """
 -----------------------------------------------------------------------------------------
-Section 6:
-Definition of Scatter-Plot Color
+Section 4:
+4.2 - Definition of Scatter-Plot Color (Gaze-Plot)
 """
 def get_image_path_color(selected_city):
     file_pattern_color = f'assets/*_{selected_city}_Color.jpg'
@@ -602,8 +594,8 @@ def update_scatter_plot_color(selected_city, selected_users, range_slider_value,
 
 """
 -----------------------------------------------------------------------------------------
-Section 7:
-Definition of Scatter-Plot Grey
+Section 4:
+4.3 - Definition of Scatter-Plot Grey (Gaze-Plot)
 """
 def get_image_path_grey(selected_city):
     file_pattern_grey = f'assets/*_{selected_city}_Grey.jpg'
@@ -814,8 +806,8 @@ def update_scatter_plot_grey(selected_city, selected_users, range_slider_value, 
 
 """
 -----------------------------------------------------------------------------------------
-Section 8:
-Definition of Density Heat-Map Color
+Section 4:
+4.4 - Definition of Density Heat-Map Color
 """
 @app.callback(
     Output('heat_map_color', 'figure'),
@@ -963,8 +955,8 @@ def update_heatmap_color(selected_city, selected_users, range_slider_value, curr
 
 """
 -----------------------------------------------------------------------------------------
-Section 9:
-Definition of Density Heat-Map Grey
+Section 4:
+4.5 - Definition of Density Heat-Map Grey
 """
 @app.callback(
     Output('heat_map_grey', 'figure'),
@@ -1146,8 +1138,8 @@ def update_heatmap_grey(selected_city, selected_users, range_slider_value, curre
 
 """
 -----------------------------------------------------------------------------------------
-Section 10:
-Definition of Box-Plot "Task Duration" (Distribution of Task Duration (A-B) per User, Color, City)
+Section 4:
+4.6 - Definition of Box-Plot "Task Duration" (Distribution of Task Duration (A-B) per User, Color, City)
 """
 @app.callback(
     Output('box_task_duration', 'figure'),
@@ -1266,8 +1258,8 @@ def update_box_plot_task_duration(active_button, current_theme):
 
 """
 -----------------------------------------------------------------------------------------
-Section 11:
-Definition of Box-Plot "Average Fixation Duration" (Distribution of Avg. Fixation Duration per User, Color, City)
+Section 4:
+4.7 - Definition of Box-Plot "Average Fixation Duration" (Distribution of Avg. Fixation Duration per User, Color, City)
 """
 @app.callback(
     Output('box_avg_fix_duration', 'figure'),
@@ -1385,8 +1377,8 @@ def update_box_plot_avg_fix_duration(active_button, current_theme):
 
 """
 -----------------------------------------------------------------------------------------
-Section 12:
-Definition of Histogram (Distribution of Task Duration per selected city map)
+Section 4:
+4.8 - Definition of Histogram (Distribution of Task Duration per selected city map)
 """
 @app.callback(
     Output('hist_taskduration', 'figure'),
@@ -1493,8 +1485,8 @@ def update_histogram_task_duration(selected_city, current_theme):
 
 """
 -----------------------------------------------------------------------------------------
-Section 13:
-Definition of Scatter Plot Color (Correlation between Fixation Duration and Saccade Length)
+Section 4:
+4.9 - Definition of Scatter Plot Color (Correlation between Fixation Duration and Saccade Length)
 """
 @app.callback(
     Output('scatter_correlation_color', 'figure'),
@@ -1645,8 +1637,8 @@ def update_scatter_correlation_color(active_button, selected_city, current_theme
 
 """
 -----------------------------------------------------------------------------------------
-Section 14:
-Definition of Scatter Plot Grey (Correlation between Fixation Duration and Saccade Length)
+Section 4:
+4.10 - Definition of Scatter Plot Grey (Correlation between Fixation Duration and Saccade Length)
 """
 @app.callback(
     Output('scatter_correlation_grey', 'figure'),
